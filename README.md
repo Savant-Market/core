@@ -1,66 +1,100 @@
-## Foundry
+# Savant Core
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+The repo holds the smart contracts that make the Savant markets work.
 
-Foundry consists of:
+## Structure
+```mermaid
+classDiagram
+    class Initializable {
+        #initializer() void
+    }
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+    class ERC1155 {
+    }
 
-## Documentation
+    class IMarketBase {
+        <<interface>>
+        +voteOnOutcome(address _token, uint256 _amount, uint128 _outcome)
+    }
 
-https://book.getfoundry.sh/
+    class MarketBase {
+        <<abstract>>
+        +creator address 
+        +tvl uint256
+        +collectedFees uint128
+        +feePPM uint32
+        +startDate uint64
+        +duration uint32
+        +possibleOutcomeCount uint128
+        +outcome uint128
+        +metadata string 
+        +feeRecipient address
 
-## Usage
+        +initialize(uint32 _feePPM, string memory _metadata, uint32 _duration, address _feeRecipient, uint128 _possibleOutcomeCount, address _creator) initializer() void
+        +voteOnOutcome(address _token, uint256 _amount, uint8 _outcome) onlyValidOutcome(_outcome) onlyOpenMarket() void
+        +calculateFeeAmount(uint256 _amount) uint128
+        +isMarketOpen() bool
+        +isMarketResolved() bool
+        +supportsInterface(bytes4 _interfaceId) bytes4
 
-### Build
+        #resolve(uint128 _winningOutcome) onlyValidOutcome() onlyClosedMarket() void
 
-```shell
-$ forge build
-```
+        #onlyOpenMarket() void
+        #onlyClosedMarket() void
+        #onlyResolvedMarket() void
+        #onlyValidOutcome(uint128 _outcome) void
+    }
 
-### Test
+    class AMMMarket {
+        <<abstract>>
+        +startPrice uint96
+        +acceptedTokens address[]
 
-```shell
-$ forge test
-```
+        +initialize(uint96 _startPrice, address[] _acceptedTokens) external void
+        +redeem(uint256 _amount) onlyResolvedMarket() uint256
+        +calculatePrice(address _token, uint256 _amount, uint8 _outcome) uint256
+    }
 
-### Format
+    class OptimisticOracleV3CallbackRecipientInterface {
+        <<interface>>
+        +assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external void
+        +assertionDisputedCallback(bytes32 assertionId) external void
+        +getPriceForOutcome(address _token, uint256 _amount, uint128 _outcome) onlyValidOutcome() uint256
+    }
 
-```shell
-$ forge fmt
-```
+    class UMAMarket {
+        +ORACLE constant address
+        +DISPUTE_WINDOW constant uint64
+        +assertedOutcome uint256
+        +assertionId bytes32
+        +disputed bool
 
-### Gas Snapshots
+        +assertMarket() onlyClosedMarket() void
+        +assertMarket(uint256 _outcome) onlyDisputed() onlyValidOutcome() onlyClosedMarket() void
+        -getDisputeWindow() uint256
 
-```shell
-$ forge snapshot
-```
+        -onlyOracle()
+        -onlyDisputed()
+    }
 
-### Anvil
+    class UMAMarketFactory {
+        +base address
+        +feePPM uint256
+        +acceptedTokens address[]
+        +feeRecipient address
 
-```shell
-$ anvil
-```
+        +createMarket(uint256 _startPrice, uint32 _duration, uint8 _possibleOutcomeCount) address
+    }
 
-### Deploy
+    ERC1155 <|-- MarketBase: extends
+    Initializable <|-- MarketBase: extends
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+    MarketBase <|-- AMMMarket: extends
+    Initializable <|-- AMMMarket: extends
 
-### Cast
+    AMMMarket <|-- UMAMarket: extends
+    IMarketBase <|-- UMAMarket: implements
+    OptimisticOracleV3CallbackRecipientInterface <|-- UMAMarket: implements
 
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+    UMAMarket <.. UMAMarketFactory: creates
 ```
