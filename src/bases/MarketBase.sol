@@ -5,6 +5,9 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 abstract contract MarketBase is Initializable {
     uint256 public constant RATIO_BASE = 10 ^ 6;
+    /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
+    bytes4 public constant MARKET_BASE_INTERFACE_ID =
+        this.calculateFeeAmount.selector ^ this.isMarketOpen.selector ^ this.isMarketResolved.selector;
 
     address public creator;
     uint256 public tvl;
@@ -20,7 +23,7 @@ abstract contract MarketBase is Initializable {
     event MarketResolved(uint128 outcome);
 
     error MarketNotOpen();
-    error MarketNotEnded(uint64 endDate, uint64 timestamp);
+    error MarketNotClosed(uint64 endDate, uint64 timestamp);
     error MarketNotResolved();
     error NotValidOutcome(uint128 givenOutcome, uint128 possibleOutcomeCount);
 
@@ -34,9 +37,8 @@ abstract contract MarketBase is Initializable {
 
     /// @notice Checks if the market is closed
     modifier onlyClosedMarket() {
-        uint64 _endDate = endDate;
-        if (_endDate > block.timestamp) {
-            revert MarketNotEnded({endDate: _endDate, timestamp: uint64(block.timestamp)});
+        if (!isMarketClosed()) {
+            revert MarketNotClosed({endDate: endDate, timestamp: uint64(block.timestamp)});
         }
         _;
     }
@@ -72,7 +74,7 @@ abstract contract MarketBase is Initializable {
     /// @param _feeRecipient Recipient address that receives the market fees
     /// @param _possibleOutcomeCount Amount of possible outcomes defined in the metadata
     /// @param _creator Creator of the market
-    function initialize(
+    function __MarketBase_init(
         uint32 _feePPM,
         string memory _metadata,
         uint64 _startDate,
@@ -80,7 +82,7 @@ abstract contract MarketBase is Initializable {
         address _feeRecipient,
         uint128 _possibleOutcomeCount,
         address _creator
-    ) public virtual initializer {
+    ) internal onlyInitializing {
         feePPM = _feePPM;
         metadata = _metadata;
         startDate = _startDate;
@@ -112,17 +114,20 @@ abstract contract MarketBase is Initializable {
     /// @notice Check if the market is resolved
     /// @return Returns `true` if the market is resolved
     function isMarketResolved() public view virtual returns (bool) {
-        if (outcome == 0) {
-            return false;
-        }
-        return true;
+        return outcome != 0;
+    }
+
+    /// @notice Returns false if the market end date is bigger than the current time
+    /// @return Returns `true` if the market is closed
+    function isMarketClosed() public view returns (bool) {
+        return endDate < block.timestamp;
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
     /// @param _interfaceId The ID of the interface.
     /// @return Returns `true` if the interface is supported.
-    function supportsInterface(bytes4 _interfaceId) public pure virtual returns (bytes4) {
-        // TODO create logic
+    function supportsInterface(bytes4 _interfaceId) public pure virtual returns (bool) {
+        return MARKET_BASE_INTERFACE_ID == _interfaceId;
     }
 
     /// @notice Resolve the market to the given outcome

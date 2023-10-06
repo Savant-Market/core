@@ -34,6 +34,7 @@ classDiagram
         +voteOnOutcome(address _token, uint256 _amount, uint8 _outcome) onlyValidOutcome(_outcome) onlyOpenMarket() void
         +calculateFeeAmount(uint256 _amount) uint128
         +isMarketOpen() bool
+        +isMarketClosed() bool
         +isMarketResolved() bool
         +supportsInterface(bytes4 _interfaceId) bytes4
 
@@ -69,12 +70,12 @@ classDiagram
         +assertionId bytes32
         +disputed bool
 
-        +assertMarket() onlyClosedMarket() void
-        +assertMarket(uint256 _outcome) onlyDisputed() onlyValidOutcome() onlyClosedMarket() void
-        -getDisputeWindow() uint256
+        +disputeMarket(uint256 _outcome) onlyValidOutcome() onlyClosedMarket() void
+        +getDisputeWindow() uint256
+        +isInDisputeWindow() bool
 
         -onlyOracle()
-        -onlyDisputed()
+        -onlyInDisputeWindow()
     }
 
     class UMAMarketFactory {
