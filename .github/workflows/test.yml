@@ -3,6 +3,11 @@ name: test
 on: 
   workflow_dispatch:
   push:
+    paths:
+      - '.github/workflows/test.yml'
+      - 'src/'
+      - 'test/'
+      - 'lib/'
 
 env:
   FOUNDRY_PROFILE: ci
@@ -12,7 +17,7 @@ jobs:
     strategy:
       fail-fast: true
 
-    name: Foundry project
+    name: Test foundry project
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
