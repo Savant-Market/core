@@ -51,7 +51,7 @@ abstract contract AMMMarket is MarketBase {
     /// @notice Checks if this or the parent contract supports an interface by its ID.
     /// @param _interfaceId The ID of the interface.
     /// @return Returns `true` if the interface is supported.
-    function supportsInterface(bytes4 _interfaceId) public pure virtual override(MarketBase) returns (bool) {
+    function supportsInterface(bytes4 _interfaceId) public view virtual override(MarketBase) returns (bool) {
         return AMMMARKET_INTERFACE_ID == _interfaceId || super.supportsInterface(_interfaceId);
     }
 }

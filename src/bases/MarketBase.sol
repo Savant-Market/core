@@ -2,12 +2,12 @@
 pragma solidity ^0.8.21;
 
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import "../interfaces/IMarketBase.sol";
 
-abstract contract MarketBase is Initializable {
+abstract contract MarketBase is Initializable, ERC165, IMarketBase {
     uint256 public constant RATIO_BASE = 10 ^ 6;
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
-    bytes4 public constant MARKET_BASE_INTERFACE_ID =
-        this.calculateFeeAmount.selector ^ this.isMarketOpen.selector ^ this.isMarketResolved.selector;
 
     address public creator;
     uint256 public tvl;
@@ -19,13 +19,6 @@ abstract contract MarketBase is Initializable {
     uint128 public outcome;
     string public metadata;
     address public feeRecipient;
-
-    event MarketResolved(uint128 outcome);
-
-    error MarketNotOpen();
-    error MarketNotClosed(uint64 endDate, uint64 timestamp);
-    error MarketNotResolved();
-    error NotValidOutcome(uint128 givenOutcome, uint128 possibleOutcomeCount);
 
     /// @notice Checks if the market is open
     modifier onlyOpenMarket() {
@@ -92,17 +85,16 @@ abstract contract MarketBase is Initializable {
         creator = _creator;
     }
 
-    /// @notice Calculates the fee for the inputed amount
-    /// @param _amount Amount that the fee should be calculated for
-    /// @return The fee that would be deducted
+    /// @inheritdoc IMarketBase
     function calculateFeeAmount(uint256 _amount) public view virtual returns (uint128) {
-        return uint128(_amount * RATIO_BASE / feePPM);
+        // If no fee is set the amount is always 0
+        if (feePPM == 0) return 0;
+        return uint128(_amount * feePPM / RATIO_BASE);
     }
 
-    /// @notice Check if the market is open and ready for predictions
-    /// @return Returns `true` if the market is open
+    /// @inheritdoc IMarketBase
     function isMarketOpen() public view virtual returns (bool) {
-        if (startDate < block.timestamp) {
+        if (startDate > block.timestamp) {
             return false;
         }
         if (endDate < block.timestamp) {
@@ -111,23 +103,21 @@ abstract contract MarketBase is Initializable {
         return true;
     }
 
-    /// @notice Check if the market is resolved
-    /// @return Returns `true` if the market is resolved
+    /// @inheritdoc IMarketBase
     function isMarketResolved() public view virtual returns (bool) {
         return outcome != 0;
     }
 
-    /// @notice Returns false if the market end date is bigger than the current time
-    /// @return Returns `true` if the market is closed
-    function isMarketClosed() public view returns (bool) {
+    /// @inheritdoc IMarketBase
+    function isMarketClosed() public view virtual returns (bool) {
         return endDate < block.timestamp;
     }
 
     /// @notice Checks if this or the parent contract supports an interface by its ID.
     /// @param _interfaceId The ID of the interface.
     /// @return Returns `true` if the interface is supported.
-    function supportsInterface(bytes4 _interfaceId) public pure virtual returns (bool) {
-        return MARKET_BASE_INTERFACE_ID == _interfaceId;
+    function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
+        return type(IMarketBase).interfaceId == _interfaceId || super.supportsInterface(_interfaceId);
     }
 
     /// @notice Resolve the market to the given outcome

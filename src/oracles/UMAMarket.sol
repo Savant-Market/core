@@ -3,9 +3,8 @@ pragma solidity ^0.8.21;
 
 import "../pricing/AMMMarket.sol";
 import "../interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
-import "../interfaces/IMarketBase.sol";
 
-contract UMAMarket is AMMMarket, OptimisticOracleV3CallbackRecipientInterface, IMarketBase {
+contract UMAMarket is AMMMarket, OptimisticOracleV3CallbackRecipientInterface {
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 public constant UMAMARKET_INTERFACE_ID = this.initialize.selector ^ this.disputeMarket.selector
         ^ this.assertionResolvedCallback.selector ^ this.assertionDisputedCallback.selector ^ this.voteOnOutcome.selector
@@ -107,7 +106,7 @@ contract UMAMarket is AMMMarket, OptimisticOracleV3CallbackRecipientInterface, I
     /// @notice Checks if this or the parent contract supports an interface by its ID.
     /// @param _interfaceId The ID of the interface.
     /// @return Returns `true` if the interface is supported.
-    function supportsInterface(bytes4 _interfaceId) public pure virtual override(AMMMarket) returns (bool) {
+    function supportsInterface(bytes4 _interfaceId) public view virtual override(AMMMarket) returns (bool) {
         return UMAMARKET_INTERFACE_ID == _interfaceId || super.supportsInterface(_interfaceId);
     }
 }
