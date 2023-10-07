@@ -4,16 +4,8 @@ pragma solidity ^0.8.21;
 import "../../src/bases/MarketBase.sol";
 
 contract MarketBaseNonAbstract is MarketBase {
-    function initialize(
-        uint32 _feePPM,
-        string memory _metadata,
-        uint64 _startDate,
-        uint32 _duration,
-        address _feeRecipient,
-        uint128 _possibleOutcomeCount,
-        address _creator
-    ) external initializer {
-        __MarketBase_init(_feePPM, _metadata, _startDate, _duration, _feeRecipient, _possibleOutcomeCount, _creator);
+    function initialize(MarketSettings calldata _settings) external initializer {
+        __MarketBase_init(_settings);
     }
 
     function setOutcome(uint128 _outcome) external {

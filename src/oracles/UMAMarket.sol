@@ -43,35 +43,13 @@ contract UMAMarket is AMMMarket, OptimisticOracleV3CallbackRecipientInterface {
     /// @notice Initialize function to initialize the contract and its dependencies
     /// @param _startPrice The initial price shares start trading
     /// @param _acceptedTokens Tokens that are accepted by the market as payment
-    /// @param _feePPM The fee precentage that the markets charges for each vote. In parts per million (100% = 1_000_000)
-    /// @param _metadata URI to the metadata (see docs for a schema file how the metadata needs to be structured)
-    /// @param _duration Duration in seconds the market will be open
-    /// @param _feeRecipient Recipient address that receives the market fees
-    /// @param _possibleOutcomeCount Amount of possible outcomes defined in the metadata
-    /// @param _creator Creator of the market
+    /// @param _settings Settings used to initialize the market
 
-    function initialize(
-        uint96 _startPrice,
-        address[] memory _acceptedTokens,
-        uint32 _feePPM,
-        string memory _metadata,
-        uint64 _startDate,
-        uint32 _duration,
-        address _feeRecipient,
-        uint128 _possibleOutcomeCount,
-        address _creator
-    ) external initializer {
-        __AMMMarket_init(
-            _startPrice,
-            _acceptedTokens,
-            _feePPM,
-            _metadata,
-            _startDate,
-            _duration,
-            _feeRecipient,
-            _possibleOutcomeCount,
-            _creator
-        );
+    function initialize(uint96 _startPrice, address[] memory _acceptedTokens, MarketSettings calldata _settings)
+        external
+        initializer
+    {
+        __AMMMarket_init(_startPrice, _acceptedTokens, _settings);
     }
 
     /// @notice Function to dispute the market if you don't agree with the outcome. By default the market assumes that the most popular outcome it the truth

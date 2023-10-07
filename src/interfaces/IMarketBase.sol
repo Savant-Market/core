@@ -9,6 +9,16 @@ interface IMarketBase {
 
     event MarketResolved(uint128 outcome);
 
+    struct MarketSettings {
+        uint32 feePPM;
+        string metadata;
+        uint64 startDate;
+        uint32 duration;
+        address feeRecipient;
+        uint128 possibleOutcomeCount;
+        address creator;
+    }
+
     /// @notice Vote on a certain outcome and receive the shares
     /// @param _token In which token the user pays
     /// @param _amount Amount of tokens the user spends

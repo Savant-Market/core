@@ -61,28 +61,15 @@ abstract contract MarketBase is Initializable, ERC165, IMarketBase {
     }
 
     /// @notice Initialize function to initialize the storage of the minimal proxy contract
-    /// @param _feePPM The fee precentage that the markets charges for each vote. In parts per million (100% = 1_000_000)
-    /// @param _metadata URI to the metadata (see docs for a schema file how the metadata needs to be structured)
-    /// @param _duration Duration in seconds the market will be open
-    /// @param _feeRecipient Recipient address that receives the market fees
-    /// @param _possibleOutcomeCount Amount of possible outcomes defined in the metadata
-    /// @param _creator Creator of the market
-    function __MarketBase_init(
-        uint32 _feePPM,
-        string memory _metadata,
-        uint64 _startDate,
-        uint32 _duration,
-        address _feeRecipient,
-        uint128 _possibleOutcomeCount,
-        address _creator
-    ) internal onlyInitializing {
-        feePPM = _feePPM;
-        metadata = _metadata;
-        startDate = _startDate;
-        endDate = _startDate + _duration;
-        feeRecipient = _feeRecipient;
-        possibleOutcomeCount = _possibleOutcomeCount;
-        creator = _creator;
+    /// @param _settings Settings used to initialize the market
+    function __MarketBase_init(MarketSettings calldata _settings) internal onlyInitializing {
+        feePPM = _settings.feePPM;
+        metadata = _settings.metadata;
+        startDate = _settings.startDate;
+        endDate = _settings.startDate + _settings.duration;
+        feeRecipient = _settings.feeRecipient;
+        possibleOutcomeCount = _settings.possibleOutcomeCount;
+        creator = _settings.creator;
     }
 
     /// @inheritdoc IMarketBase
