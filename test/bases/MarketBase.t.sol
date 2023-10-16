@@ -2,10 +2,10 @@
 pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import "../helpers/MarketBaseNonAbstract.sol";
-import "../../src/interfaces/IMarketBase.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
+import {MarketBaseNonAbstract} from "test/helpers/MarketBaseNonAbstract.sol";
+import {IMarketBase} from "src/interfaces/IMarketBase.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract MarketBaseTest is Test {
     MarketBaseNonAbstract private market = new MarketBaseNonAbstract();

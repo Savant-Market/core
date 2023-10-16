@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.21;
 
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "../interfaces/IMarketBase.sol";
+import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
+import {IMarketBase} from "src/interfaces/IMarketBase.sol";
 
 abstract contract MarketBase is Initializable, ERC165, IMarketBase {
     uint256 public constant RATIO_BASE = 10 ^ 6;

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.21;
 
-import "../pricing/AMMMarket.sol";
-import "../interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
+import {AMMMarket} from "src/pricing/AMMMarket.sol";
+import {IMarketBase} from "src/interfaces/IMarketBase.sol";
+import {OptimisticOracleV3CallbackRecipientInterface} from
+    "src/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
 
 contract UMAMarket is AMMMarket, OptimisticOracleV3CallbackRecipientInterface {
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
@@ -65,11 +67,6 @@ contract UMAMarket is AMMMarket, OptimisticOracleV3CallbackRecipientInterface {
 
     /// @inheritdoc OptimisticOracleV3CallbackRecipientInterface
     function assertionDisputedCallback(bytes32 _assertionId) external {
-        // TODO create logic
-    }
-
-    /// @inheritdoc IMarketBase
-    function voteOnOutcome(address _token, uint256 _amount, uint128 _outcome) external {
         // TODO create logic
     }
 

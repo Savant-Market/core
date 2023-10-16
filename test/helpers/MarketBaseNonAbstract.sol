@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.21;
 
-import "../../src/bases/MarketBase.sol";
+import {MarketBase} from "src/bases/MarketBase.sol";
 
 contract MarketBaseNonAbstract is MarketBase {
     function initialize(MarketSettings calldata _settings) external initializer {
@@ -16,5 +16,5 @@ contract MarketBaseNonAbstract is MarketBase {
         _resolve(_outcome);
     }
 
-    function voteOnOutcome(address, uint256, uint128) external {}
+    function voteOnOutcome(uint128, uint256, address) external returns (uint256) {}
 }
