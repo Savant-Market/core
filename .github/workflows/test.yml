@@ -5,9 +5,7 @@ on:
   push:
     paths:
       - '.github/workflows/test.yml'
-      - 'src/'
-      - 'test/'
-      - 'lib/'
+      - '**.sol'
 
 env:
   FOUNDRY_PROFILE: ci
