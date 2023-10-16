@@ -70,6 +70,7 @@ abstract contract MarketBase is Initializable, ERC165, IMarketBase {
         feeRecipient = _settings.feeRecipient;
         possibleOutcomeCount = _settings.possibleOutcomeCount;
         creator = _settings.creator;
+        emit MarketBaseInitialized({settings: _settings});
     }
 
     /// @inheritdoc IMarketBase

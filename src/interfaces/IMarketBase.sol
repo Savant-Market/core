@@ -8,6 +8,7 @@ interface IMarketBase {
     error NotValidOutcome(uint128 givenOutcome, uint128 possibleOutcomeCount);
 
     event MarketResolved(uint128 outcome);
+    event MarketBaseInitialized(MarketSettings settings);
 
     struct MarketSettings {
         uint32 feePPM;
@@ -20,10 +21,11 @@ interface IMarketBase {
     }
 
     /// @notice Vote on a certain outcome and receive the shares
-    /// @param _token In which token the user pays
-    /// @param _amount Amount of tokens the user spends
     /// @param _outcome Which outcome the user votes for
-    function voteOnOutcome(address _token, uint256 _amount, uint128 _outcome) external;
+    /// @param _amount Amount of tokens the user spends
+    /// @param _recipient Recipient of the shares. Has to be an ERC1155Receiver if it is a contract
+    /// @return Amount of shares minted for the given outcome
+    function voteOnOutcome(uint128 _outcome, uint256 _amount, address _recipient) external returns (uint256);
 
     /// @notice Calculates the fee for the inputed amount
     /// @param _amount Amount that the fee should be calculated for

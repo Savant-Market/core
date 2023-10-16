@@ -14,6 +14,7 @@ contract MarketBaseTest is Test {
     IMarketBase.MarketSettings settings = IMarketBase.MarketSettings(1, "asdf", 2, 3, vm.addr(4), 5, vm.addr(6));
 
     event MarketResolved(uint128 outcome);
+    event MarketBaseInitialized(IMarketBase.MarketSettings settings);
 
     function setUp() public {
         marketCloned = MarketBaseNonAbstract(Clones.clone(address(market)));
@@ -27,6 +28,9 @@ contract MarketBaseTest is Test {
 
     /// @notice The clone should be able to initialize the storage and set the values correctly
     function test_initializingClone() public {
+        vm.expectEmit(address(marketCloned));
+        emit MarketBaseInitialized({settings: settings});
+
         marketCloned.initialize(settings);
         assertEq(marketCloned.feePPM(), 1);
         assertEq(marketCloned.metadata(), "asdf");
