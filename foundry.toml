@@ -4,5 +4,21 @@ out = "out"
 libs = ["lib"]
 solc_version = "0.8.21"
 evm_version = "london" # Fixed to london till L2s support PUSH0 opcode
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "ds-test/=lib/forge-std/lib/ds-test/src/",
+    "erc4626-tests/=lib/openzeppelin-contracts/lib/erc4626-tests/",
+    "forge-gas-snapshot/=lib/permit2/lib/forge-gas-snapshot/src/",
+    "forge-std/=lib/forge-std/src/",
+    "openzeppelin-contracts/=lib/openzeppelin-contracts/",
+    "permit2/=lib/permit2/",
+    "solmate/=lib/permit2/lib/solmate/"
+]
+
+[profile.ci]
+verbosity = 4
+
+[rpc_endpoints]
+polygon = "https://polygon.gateway.tenderly.co"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
