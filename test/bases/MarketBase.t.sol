@@ -21,13 +21,13 @@ contract MarketBaseTest is Test {
     }
 
     /// @notice Initializers are disabled by the constructor. So non proxy contracts should fail initializing
-    function test_initializingNonClone() public {
+    function test___MarketBase_init_initializingNonClone() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         market.initialize(settings);
     }
 
     /// @notice The clone should be able to initialize the storage and set the values correctly
-    function test_initializingClone() public {
+    function test___MarketBase_init_initializingClone() public {
         vm.expectEmit(address(marketCloned));
         emit MarketBaseInitialized({settings: settings});
 
@@ -46,7 +46,7 @@ contract MarketBaseTest is Test {
 
     /// @notice Checks if the fee is calculated correctly. If the `_feePPM` is set to 0
     ///         the contract should return 0 too.
-    function test_calculatesCorrectFeeAmount(uint256 _amount, uint32 _feePPM) public {
+    function test_calculateFeeAmount_correct(uint256 _amount, uint32 _feePPM) public {
         // feePPM cannot be bigger than RATIO_BASE set in the market
         vm.assume(_feePPM < marketCloned.RATIO_BASE() + 1);
 
@@ -70,9 +70,7 @@ contract MarketBaseTest is Test {
     }
 
     /// @notice Should return false if startDate is bigger than block.timestamp
-    ///         Should return false if endDate is smaller than block.timestamp
-    ///         Should return true if block.timestamp is between startDate and endDate
-    function test_isMarketOpen() public {
+    function test_isMarketOpen_biggerStartDate() public {
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
         marketCloned.initialize(_settings);
@@ -80,18 +78,46 @@ contract MarketBaseTest is Test {
         // startDate is bigger than block.timestamp
         vm.warp(1);
         assertEq(marketCloned.isMarketOpen(), false);
+    }
+
+    /// @notice Should return false if endDate is smaller than block.timestamp
+    function test_isMarketOpen_smallerEndDate() public {
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.initialize(_settings);
 
         // endDate is smaller than block.timestamp
         vm.warp(6);
         assertEq(marketCloned.isMarketOpen(), false);
+    }
+
+    /// @notice Should return true if block.timestamp is between startDate and endDate
+    function test_isMarketOpen_timestampInBoundaries() public {
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.initialize(_settings);
 
         // block.timestamp is between endDate and startDate
         vm.warp(4);
         assertEq(marketCloned.isMarketOpen(), true);
+    }
+
+    /// @notice Should return true if block.timestamp is equal to startDate
+    function test_isMarketOpen_startDateIsEqual() public {
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.initialize(_settings);
 
         // block.timestamp is equal to startDate
         vm.warp(marketCloned.startDate());
         assertEq(marketCloned.isMarketOpen(), true);
+    }
+
+    /// @notice Should return true if block.timestamp is equal to endDate
+    function test_isMarketOpen_endDateIsEqual() public {
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.initialize(_settings);
 
         // block.timestamp is equal to endDate
         vm.warp(marketCloned.endDate());
@@ -99,28 +125,42 @@ contract MarketBaseTest is Test {
     }
 
     /// @notice Market shouldn't be resolved by default
-    ///         Market should be resolved if outcome is bigger than 0
-    function test_isMarketResolved() public {
+    function test_isMarketResolved_default() public {
         marketCloned.initialize(settings);
 
         assertEq(marketCloned.isMarketResolved(), false);
+    }
+
+    /// @notice Market should be resolved if outcome is bigger than 0
+    function test_isMarketResolved_biggerThenZero() public {
+        marketCloned.initialize(settings);
 
         marketCloned.setOutcome(2);
 
         assertEq(marketCloned.isMarketResolved(), true);
     }
 
-    /// @notice Market is closed if endDate is smaller than block.timestamp
-    function test_isMarketClosed() public {
+    /// @notice Market is not closed block.timestamp is smaller than endDate
+    function test_isMarketClosed_smallerThenEndDate() public {
         marketCloned.initialize(settings);
 
         // market is not closed
         vm.warp(2);
         assertEq(marketCloned.isMarketClosed(), false);
+    }
+
+    /// @notice Market is not closed if block.timestamp is equal to endDate
+    function test_isMarketClosed_equalThenEndDate() public {
+        marketCloned.initialize(settings);
 
         // market is not closed if endDate = block.timestamp
         vm.warp(marketCloned.endDate());
         assertEq(marketCloned.isMarketClosed(), false);
+    }
+
+    /// @notice Market is closed if block.timestamp is bigger then endDate
+    function test_isMarketClosed_biggerThenEndDate() public {
+        marketCloned.initialize(settings);
 
         // market is closed
         vm.warp(marketCloned.endDate() + 1);
@@ -128,19 +168,25 @@ contract MarketBaseTest is Test {
     }
 
     /// @notice check if market exports the correct interface
-    function test_supportsInterface() public {
+    function test_supportsInterface_ERC165() public {
         // should support the ERC165 interface
         assertEq(marketCloned.supportsInterface(0x01ffc9a7), true);
+    }
 
+    /// @notice check if market exports the correct interface
+    function test_supportsInterface_IMarketBase() public {
         // should support the ERC165 interface of IMarketBase
         assertEq(marketCloned.supportsInterface(type(IMarketBase).interfaceId), true);
+    }
 
+    /// @notice should return false
+    function test_supportsInterface_InvalidInterface() public {
         // should not support an invalid interface
         assertEq(marketCloned.supportsInterface(0xffffffff), false);
     }
 
     /// @notice should revert if outcome is invalid
-    function test_invalidOutcomeResolve() public {
+    function test_resolve_invalidOutcome() public {
         marketCloned.initialize(settings);
 
         uint128 invalidOutcome = type(uint128).max - 1;
@@ -153,7 +199,7 @@ contract MarketBaseTest is Test {
     }
 
     /// @notice should revert if market is not closed
-    function test_notClosedResolve() public {
+    function test_resolve_notClosed() public {
         marketCloned.initialize(settings);
         uint128 validOutcome = 1;
         vm.warp(3);
@@ -163,7 +209,7 @@ contract MarketBaseTest is Test {
     }
 
     /// @notice should set the outcome and emit MarketResolved
-    function test_resolve() public {
+    function test_resolve_valid() public {
         marketCloned.initialize(settings);
         uint128 validOutcome = 1;
         vm.warp(6);
