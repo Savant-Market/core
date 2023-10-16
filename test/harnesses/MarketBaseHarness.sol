@@ -3,16 +3,16 @@ pragma solidity ^0.8.21;
 
 import {MarketBase} from "src/bases/MarketBase.sol";
 
-contract MarketBaseNonAbstract is MarketBase {
-    function initialize(MarketSettings calldata _settings) external initializer {
+contract MarketBaseHarness is MarketBase {
+    function exposed___MarketBase_init(MarketSettings calldata _settings) external initializer {
         __MarketBase_init(_settings);
     }
 
-    function setOutcome(uint128 _outcome) external {
+    function workaround_setOutcome(uint128 _outcome) external {
         outcome = _outcome;
     }
 
-    function resolve(uint128 _outcome) external {
+    function exposed_resolve(uint128 _outcome) external {
         _resolve(_outcome);
     }
 

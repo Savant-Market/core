@@ -2,14 +2,14 @@
 pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
-import {MarketBaseNonAbstract} from "test/helpers/MarketBaseNonAbstract.sol";
+import {MarketBaseHarness} from "test/harnesses/MarketBaseHarness.sol";
 import {IMarketBase} from "src/interfaces/IMarketBase.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract MarketBaseTest is Test {
-    MarketBaseNonAbstract private market = new MarketBaseNonAbstract();
-    MarketBaseNonAbstract private marketCloned;
+    MarketBaseHarness private market = new MarketBaseHarness();
+    MarketBaseHarness private marketCloned;
 
     IMarketBase.MarketSettings settings = IMarketBase.MarketSettings(1, "asdf", 2, 3, vm.addr(4), 5, vm.addr(6));
 
@@ -17,13 +17,13 @@ contract MarketBaseTest is Test {
     event MarketBaseInitialized(IMarketBase.MarketSettings settings);
 
     function setUp() public {
-        marketCloned = MarketBaseNonAbstract(Clones.clone(address(market)));
+        marketCloned = MarketBaseHarness(Clones.clone(address(market)));
     }
 
     /// @notice Initializers are disabled by the constructor. So non proxy contracts should fail initializing
     function test_Revert___MarketBase_init_initializingNonClone() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        market.initialize(settings);
+        market.exposed___MarketBase_init(settings);
     }
 
     /// @notice The clone should be able to initialize the storage and set the values correctly
@@ -31,7 +31,7 @@ contract MarketBaseTest is Test {
         vm.expectEmit(address(marketCloned));
         emit MarketBaseInitialized({settings: settings});
 
-        marketCloned.initialize(settings);
+        marketCloned.exposed___MarketBase_init(settings);
         assertEq(marketCloned.feePPM(), 1, "fee is correclty set");
         assertEq(marketCloned.metadata(), "asdf", "metadata is correclty set");
         assertEq(marketCloned.startDate(), 2, "startDate is correclty set");
@@ -57,7 +57,7 @@ contract MarketBaseTest is Test {
 
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = _feePPM;
-        marketCloned.initialize(_settings);
+        marketCloned.exposed___MarketBase_init(_settings);
 
         uint128 feeFromContract = marketCloned.calculateFeeAmount(_amount);
 
@@ -73,7 +73,7 @@ contract MarketBaseTest is Test {
     function test_isMarketOpen_biggerStartDate() public {
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.initialize(_settings);
+        marketCloned.exposed___MarketBase_init(_settings);
 
         // startDate is bigger than block.timestamp
         vm.warp(1);
@@ -84,7 +84,7 @@ contract MarketBaseTest is Test {
     function test_isMarketOpen_smallerEndDate() public {
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.initialize(_settings);
+        marketCloned.exposed___MarketBase_init(_settings);
 
         // endDate is smaller than block.timestamp
         vm.warp(6);
@@ -95,7 +95,7 @@ contract MarketBaseTest is Test {
     function test_isMarketOpen_timestampInBoundaries() public {
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.initialize(_settings);
+        marketCloned.exposed___MarketBase_init(_settings);
 
         // block.timestamp is between endDate and startDate
         vm.warp(4);
@@ -106,7 +106,7 @@ contract MarketBaseTest is Test {
     function test_isMarketOpen_startDateIsEqual() public {
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.initialize(_settings);
+        marketCloned.exposed___MarketBase_init(_settings);
 
         // block.timestamp is equal to startDate
         vm.warp(marketCloned.startDate());
@@ -117,7 +117,7 @@ contract MarketBaseTest is Test {
     function test_isMarketOpen_endDateIsEqual() public {
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.initialize(_settings);
+        marketCloned.exposed___MarketBase_init(_settings);
 
         // block.timestamp is equal to endDate
         vm.warp(marketCloned.endDate());
@@ -126,23 +126,23 @@ contract MarketBaseTest is Test {
 
     /// @notice Market shouldn't be resolved by default
     function test_isMarketResolved_default() public {
-        marketCloned.initialize(settings);
+        marketCloned.exposed___MarketBase_init(settings);
 
         assertEq(marketCloned.isMarketResolved(), false, "market should not be resolved");
     }
 
     /// @notice Market should be resolved if outcome is bigger than 0
     function test_isMarketResolved_biggerThenZero() public {
-        marketCloned.initialize(settings);
+        marketCloned.exposed___MarketBase_init(settings);
 
-        marketCloned.setOutcome(2);
+        marketCloned.workaround_setOutcome(2);
 
         assertEq(marketCloned.isMarketResolved(), true, "market should be resolved");
     }
 
     /// @notice Market is not closed block.timestamp is smaller than endDate
     function test_isMarketClosed_smallerThenEndDate() public {
-        marketCloned.initialize(settings);
+        marketCloned.exposed___MarketBase_init(settings);
 
         // market is not closed
         vm.warp(2);
@@ -151,7 +151,7 @@ contract MarketBaseTest is Test {
 
     /// @notice Market is not closed if block.timestamp is equal to endDate
     function test_isMarketClosed_equalThenEndDate() public {
-        marketCloned.initialize(settings);
+        marketCloned.exposed___MarketBase_init(settings);
 
         // market is not closed if endDate = block.timestamp
         vm.warp(marketCloned.endDate());
@@ -160,7 +160,7 @@ contract MarketBaseTest is Test {
 
     /// @notice Market is closed if block.timestamp is bigger then endDate
     function test_isMarketClosed_biggerThenEndDate() public {
-        marketCloned.initialize(settings);
+        marketCloned.exposed___MarketBase_init(settings);
 
         // market is closed
         vm.warp(marketCloned.endDate() + 1);
@@ -187,7 +187,7 @@ contract MarketBaseTest is Test {
 
     /// @notice should revert if outcome is invalid
     function test_Revert_resolve_invalidOutcome() public {
-        marketCloned.initialize(settings);
+        marketCloned.exposed___MarketBase_init(settings);
 
         uint128 invalidOutcome = type(uint128).max - 1;
         vm.expectRevert(
@@ -195,28 +195,28 @@ contract MarketBaseTest is Test {
                 IMarketBase.NotValidOutcome.selector, invalidOutcome, marketCloned.possibleOutcomeCount()
             )
         );
-        marketCloned.resolve(invalidOutcome);
+        marketCloned.exposed_resolve(invalidOutcome);
     }
 
     /// @notice should revert if market is not closed
     function test_Revert_resolve_notClosed() public {
-        marketCloned.initialize(settings);
+        marketCloned.exposed___MarketBase_init(settings);
         uint128 validOutcome = 1;
         vm.warp(3);
 
         vm.expectRevert(abi.encodeWithSelector(IMarketBase.MarketNotClosed.selector, marketCloned.endDate(), 3));
-        marketCloned.resolve(validOutcome);
+        marketCloned.exposed_resolve(validOutcome);
     }
 
     /// @notice should set the outcome and emit MarketResolved
     function test_resolve_valid() public {
-        marketCloned.initialize(settings);
+        marketCloned.exposed___MarketBase_init(settings);
         uint128 validOutcome = 1;
         vm.warp(6);
 
         vm.expectEmit(address(marketCloned));
         emit MarketResolved(validOutcome);
-        marketCloned.resolve(validOutcome);
+        marketCloned.exposed_resolve(validOutcome);
         assertEq(marketCloned.outcome(), validOutcome, "should set the outcome correctly");
     }
 }
