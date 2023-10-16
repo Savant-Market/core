@@ -21,7 +21,7 @@ contract MarketBaseTest is Test {
     }
 
     /// @notice Initializers are disabled by the constructor. So non proxy contracts should fail initializing
-    function test___MarketBase_init_initializingNonClone() public {
+    function test_Revert___MarketBase_init_initializingNonClone() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         market.initialize(settings);
     }
@@ -32,21 +32,21 @@ contract MarketBaseTest is Test {
         emit MarketBaseInitialized({settings: settings});
 
         marketCloned.initialize(settings);
-        assertEq(marketCloned.feePPM(), 1);
-        assertEq(marketCloned.metadata(), "asdf");
-        assertEq(marketCloned.startDate(), 2);
-        assertEq(marketCloned.endDate(), 2 + 3);
-        assertEq(marketCloned.feeRecipient(), vm.addr(4));
-        assertEq(marketCloned.possibleOutcomeCount(), 5);
-        assertEq(marketCloned.creator(), vm.addr(6));
-        assertEq(marketCloned.tvl(), 0);
-        assertEq(marketCloned.collectedFees(), 0);
-        assertEq(marketCloned.outcome(), 0);
+        assertEq(marketCloned.feePPM(), 1, "fee is correclty set");
+        assertEq(marketCloned.metadata(), "asdf", "metadata is correclty set");
+        assertEq(marketCloned.startDate(), 2, "startDate is correclty set");
+        assertEq(marketCloned.endDate(), 2 + 3, "endDate is correclty set");
+        assertEq(marketCloned.feeRecipient(), vm.addr(4), "feeRecipient is correclty set");
+        assertEq(marketCloned.possibleOutcomeCount(), 5, "possibleOutcomeCount is correclty set");
+        assertEq(marketCloned.creator(), vm.addr(6), "creator is correclty set");
+        assertEq(marketCloned.tvl(), 0, "tvl is correclty set");
+        assertEq(marketCloned.collectedFees(), 0, "collectedFees is correclty set");
+        assertEq(marketCloned.outcome(), 0, "outcome is correclty set");
     }
 
     /// @notice Checks if the fee is calculated correctly. If the `_feePPM` is set to 0
     ///         the contract should return 0 too.
-    function test_calculateFeeAmount_correct(uint256 _amount, uint32 _feePPM) public {
+    function testFuzz_calculateFeeAmount_correct(uint256 _amount, uint32 _feePPM) public {
         // feePPM cannot be bigger than RATIO_BASE set in the market
         vm.assume(_feePPM < marketCloned.RATIO_BASE() + 1);
 
@@ -63,9 +63,9 @@ contract MarketBaseTest is Test {
 
         if (_feePPM > 0) {
             uint128 expectedFeeAmount = uint128(_amount * _feePPM / marketCloned.RATIO_BASE());
-            assertEq(feeFromContract, expectedFeeAmount);
+            assertEq(feeFromContract, expectedFeeAmount, "fee is correclty calculated");
         } else {
-            assertEq(feeFromContract, 0);
+            assertEq(feeFromContract, 0, "fee to be zero because fee is set to 0");
         }
     }
 
@@ -77,7 +77,7 @@ contract MarketBaseTest is Test {
 
         // startDate is bigger than block.timestamp
         vm.warp(1);
-        assertEq(marketCloned.isMarketOpen(), false);
+        assertEq(marketCloned.isMarketOpen(), false, "market should not be open");
     }
 
     /// @notice Should return false if endDate is smaller than block.timestamp
@@ -88,7 +88,7 @@ contract MarketBaseTest is Test {
 
         // endDate is smaller than block.timestamp
         vm.warp(6);
-        assertEq(marketCloned.isMarketOpen(), false);
+        assertEq(marketCloned.isMarketOpen(), false), "market should not be open";
     }
 
     /// @notice Should return true if block.timestamp is between startDate and endDate
@@ -99,7 +99,7 @@ contract MarketBaseTest is Test {
 
         // block.timestamp is between endDate and startDate
         vm.warp(4);
-        assertEq(marketCloned.isMarketOpen(), true);
+        assertEq(marketCloned.isMarketOpen(), true, "market should be open");
     }
 
     /// @notice Should return true if block.timestamp is equal to startDate
@@ -110,7 +110,7 @@ contract MarketBaseTest is Test {
 
         // block.timestamp is equal to startDate
         vm.warp(marketCloned.startDate());
-        assertEq(marketCloned.isMarketOpen(), true);
+        assertEq(marketCloned.isMarketOpen(), true, "market should be open");
     }
 
     /// @notice Should return true if block.timestamp is equal to endDate
@@ -121,14 +121,14 @@ contract MarketBaseTest is Test {
 
         // block.timestamp is equal to endDate
         vm.warp(marketCloned.endDate());
-        assertEq(marketCloned.isMarketOpen(), true);
+        assertEq(marketCloned.isMarketOpen(), true, "market should be open");
     }
 
     /// @notice Market shouldn't be resolved by default
     function test_isMarketResolved_default() public {
         marketCloned.initialize(settings);
 
-        assertEq(marketCloned.isMarketResolved(), false);
+        assertEq(marketCloned.isMarketResolved(), false, "market should not be resolved");
     }
 
     /// @notice Market should be resolved if outcome is bigger than 0
@@ -137,7 +137,7 @@ contract MarketBaseTest is Test {
 
         marketCloned.setOutcome(2);
 
-        assertEq(marketCloned.isMarketResolved(), true);
+        assertEq(marketCloned.isMarketResolved(), true, "market should be resolved");
     }
 
     /// @notice Market is not closed block.timestamp is smaller than endDate
@@ -146,7 +146,7 @@ contract MarketBaseTest is Test {
 
         // market is not closed
         vm.warp(2);
-        assertEq(marketCloned.isMarketClosed(), false);
+        assertEq(marketCloned.isMarketClosed(), false, "market should not be closed");
     }
 
     /// @notice Market is not closed if block.timestamp is equal to endDate
@@ -155,7 +155,7 @@ contract MarketBaseTest is Test {
 
         // market is not closed if endDate = block.timestamp
         vm.warp(marketCloned.endDate());
-        assertEq(marketCloned.isMarketClosed(), false);
+        assertEq(marketCloned.isMarketClosed(), false, "market should not be closed");
     }
 
     /// @notice Market is closed if block.timestamp is bigger then endDate
@@ -164,29 +164,29 @@ contract MarketBaseTest is Test {
 
         // market is closed
         vm.warp(marketCloned.endDate() + 1);
-        assertEq(marketCloned.isMarketClosed(), true);
+        assertEq(marketCloned.isMarketClosed(), true, "market should be closed");
     }
 
     /// @notice check if market exports the correct interface
     function test_supportsInterface_ERC165() public {
         // should support the ERC165 interface
-        assertEq(marketCloned.supportsInterface(0x01ffc9a7), true);
+        assertEq(marketCloned.supportsInterface(0x01ffc9a7), true, "should support the interface");
     }
 
     /// @notice check if market exports the correct interface
     function test_supportsInterface_IMarketBase() public {
         // should support the ERC165 interface of IMarketBase
-        assertEq(marketCloned.supportsInterface(type(IMarketBase).interfaceId), true);
+        assertEq(marketCloned.supportsInterface(type(IMarketBase).interfaceId), true, "should support the interface");
     }
 
     /// @notice should return false
     function test_supportsInterface_InvalidInterface() public {
         // should not support an invalid interface
-        assertEq(marketCloned.supportsInterface(0xffffffff), false);
+        assertEq(marketCloned.supportsInterface(0xffffffff), false, "should not support the interface");
     }
 
     /// @notice should revert if outcome is invalid
-    function test_resolve_invalidOutcome() public {
+    function test_Revert_resolve_invalidOutcome() public {
         marketCloned.initialize(settings);
 
         uint128 invalidOutcome = type(uint128).max - 1;
@@ -199,7 +199,7 @@ contract MarketBaseTest is Test {
     }
 
     /// @notice should revert if market is not closed
-    function test_resolve_notClosed() public {
+    function test_Revert_resolve_notClosed() public {
         marketCloned.initialize(settings);
         uint128 validOutcome = 1;
         vm.warp(3);
@@ -217,6 +217,6 @@ contract MarketBaseTest is Test {
         vm.expectEmit(address(marketCloned));
         emit MarketResolved(validOutcome);
         marketCloned.resolve(validOutcome);
-        assertEq(marketCloned.outcome(), validOutcome);
+        assertEq(marketCloned.outcome(), validOutcome, "should set the outcome correctly");
     }
 }
