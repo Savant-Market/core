@@ -88,7 +88,7 @@ contract MarketBaseTest is Test {
 
         // endDate is smaller than block.timestamp
         vm.warp(6);
-        assertEq(marketCloned.isMarketOpen(), false), "market should not be open";
+        assertEq(marketCloned.isMarketOpen(), false, "market should not be open");
     }
 
     /// @notice Should return true if block.timestamp is between startDate and endDate
