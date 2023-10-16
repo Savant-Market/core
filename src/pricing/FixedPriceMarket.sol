@@ -15,7 +15,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
         this.voteOnOutcome.selector ^ this.permitVoteOnOutcome.selector ^ this.redeem.selector;
 
     /// @dev inflate the amount of shares by 18 0s
-    uint64 public constant SHARES_MODIFIER = 10 ^ 18;
+    uint64 public constant SHARES_MODIFIER = 1e18;
 
     IERC20 public immutable DAI;
     IAllowanceTransfer public immutable PERMIT2;
@@ -24,6 +24,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
 
     error NotEnoughShares(uint256 _requested, uint256 _actual);
     error InvalidSpender(address _given, address _required);
+    error InvalidPrice(uint96 price);
 
     event FixedPriceMarketInitialized(uint256 price, string metadataURI);
     event SharesRedeemed(
@@ -45,6 +46,11 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
         string memory _erc1155MetadataURI,
         MarketSettings calldata _settings
     ) internal onlyInitializing {
+        // price cannot be 0
+        if (_price < 1) {
+            revert InvalidPrice({price: _price});
+        }
+
         __MarketBase_init(_settings);
         _setURI(_erc1155MetadataURI);
         price = _price;
@@ -127,7 +133,10 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
         uint128 fees = calculateFeeAmount(_amount);
         amountOfShares = (_amount - fees) * SHARES_MODIFIER / price;
         tvl = tvl + _amount - fees;
-        collectedFees = collectedFees + fees;
+        // only store fees if necessary
+        if (fees > 0) {
+            collectedFees = collectedFees + fees;
+        }
         _mint(_recipient, _outcome, amountOfShares, "Savant");
         emit Voted({voter: msg.sender, recipient: _recipient, outcome: _outcome, amountOfShares: amountOfShares});
     }

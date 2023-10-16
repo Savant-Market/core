@@ -6,7 +6,7 @@ import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {IMarketBase} from "src/interfaces/IMarketBase.sol";
 
 abstract contract MarketBase is Initializable, ERC165, IMarketBase {
-    uint256 public constant RATIO_BASE = 10 ^ 6;
+    uint256 public constant RATIO_BASE = 1e6;
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 
     address public creator;
