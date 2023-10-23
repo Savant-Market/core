@@ -130,7 +130,7 @@ contract FixedPriceMarketTest is Test {
     }
 
     function test_voteOnOutcome_mintShares() public {
-                vm.selectFork(polygonFork);
+        vm.selectFork(polygonFork);
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
@@ -155,5 +155,36 @@ contract FixedPriceMarketTest is Test {
         vm.stopPrank();
 
         assertEq(marketCloned.balanceOf(recipient, outcome), amount);
+    }
+
+    function test_voteOnOutcome_deductFee() public {
+        vm.selectFork(polygonFork);
+
+        // initialize the market
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 3e4; // 3% fee
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+
+        address recipient = makeAddr("recipient");
+        address voter = makeAddr("voter");
+        uint256 amount = 1e18;
+        uint128 outcome = 1;
+        uint256 feeAmount = 3e16;
+
+        // test that a clean slate is given
+        assertEq(marketCloned.balanceOf(recipient, outcome), 0);
+
+        // make sure market is open
+        vm.warp(3);
+
+        deal(address(DAI), voter, amount);
+        vm.startPrank(voter);
+        DAI.approve(address(marketCloned), amount);
+        marketCloned.voteOnOutcome(outcome, amount, recipient);
+        vm.stopPrank();
+
+        assertEq(marketCloned.tvl(), amount - feeAmount);
+        assertEq(marketCloned.collectedFees(), feeAmount);
+        assertEq(DAI.balanceOf(address(marketCloned)), amount); // The market should store the fees
     }
 }

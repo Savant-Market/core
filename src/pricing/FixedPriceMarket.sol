@@ -132,10 +132,10 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     {
         uint128 fees = calculateFeeAmount(_amount);
         amountOfShares = (_amount - fees) * SHARES_MODIFIER / price;
-        tvl = tvl + _amount - fees;
+        tvl += _amount - fees;
         // only store fees if necessary
         if (fees > 0) {
-            collectedFees = collectedFees + fees;
+            collectedFees += fees;
         }
         _mint(_recipient, _outcome, amountOfShares, "Savant");
         emit Voted({voter: msg.sender, recipient: _recipient, outcome: _outcome, amountOfShares: amountOfShares});
