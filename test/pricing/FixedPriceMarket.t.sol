@@ -1,17 +1,24 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.21;
 
+import "forge-std/Vm.sol";
 import "forge-std/Test.sol";
 import {FixedPriceMarketHarness} from "test/harnesses/FixedPriceMarketHarness.sol";
+import {FixedPriceMarket} from "src/pricing/FixedPriceMarket.sol";
 import {IMarketBase} from "src/interfaces/IMarketBase.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {PermitHash} from "permit2/src/libraries/PermitHash.sol";
 
 contract FixedPriceMarketTest is Test {
+    bytes32 private constant _HASHED_NAME = keccak256("Permit2");
+    bytes32 private constant _TYPE_HASH =
+        keccak256("EIP712Domain(string name,uint256 chainId,address verifyingContract)");
+
     IERC20 private constant DAI = IERC20(0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063); // Polygon address for fork testing
-    IAllowanceTransfer private constant PERMIT2 = IAllowanceTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3); // Polygon address for fork testing
+    ISignatureTransfer private constant PERMIT2 = ISignatureTransfer(0x000000000022D473030F116dDEE9F6B43aC78BA3); // Polygon address for fork testing
 
     FixedPriceMarketHarness private market = new FixedPriceMarketHarness(DAI, PERMIT2);
     FixedPriceMarketHarness private marketCloned;
@@ -19,6 +26,8 @@ contract FixedPriceMarketTest is Test {
     IMarketBase.MarketSettings settings = IMarketBase.MarketSettings(1, "asdf", 2, 3, vm.addr(4), 5, vm.addr(6));
 
     uint256 private polygonFork;
+
+    ISignatureTransfer.PermitTransferFrom public permit;
 
     event FixedPriceMarketInitialized(uint256 price, string metadataURI);
     event MarketBaseInitialized(IMarketBase.MarketSettings settings);
@@ -29,6 +38,12 @@ contract FixedPriceMarketTest is Test {
         marketCloned = FixedPriceMarketHarness(Clones.clone(address(market)));
         vm.makePersistent(address(market));
         vm.makePersistent(address(marketCloned));
+
+        permit = ISignatureTransfer.PermitTransferFrom({
+            permitted: ISignatureTransfer.TokenPermissions({token: address(DAI), amount: 0}),
+            nonce: 0,
+            deadline: type(uint256).max
+        });
     }
 
     function test_immutables_nonClone() public {
@@ -48,6 +63,11 @@ contract FixedPriceMarketTest is Test {
     function test_Revert___FixedPriceMarket_init_initializingNonClone() public {
         vm.expectRevert(Initializable.InvalidInitialization.selector);
         market.exposed___FixedPriceMarket_init(1, "https://example.com", settings);
+    }
+
+    function test_Revert___FixedPriceMarket_init_invalidPrice() public {
+        vm.expectRevert(abi.encodeWithSelector(FixedPriceMarket.InvalidPrice.selector, 0));
+        marketCloned.exposed___FixedPriceMarket_init(0, "https://example.com", settings);
     }
 
     function test___FixedPriceMarket_init_initializingClone() public {
@@ -71,8 +91,11 @@ contract FixedPriceMarketTest is Test {
         assertEq(marketCloned.uri(1), "https://example.com", "tokenURI is correclty set");
     }
 
-    function test_voteOnOutcome_emitEvent() public {
+    function test_voteOnOutcome_emitEvent(uint232 amount) public {
         vm.selectFork(polygonFork);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
@@ -81,8 +104,7 @@ contract FixedPriceMarketTest is Test {
 
         address recipient = makeAddr("recipient");
         address voter = makeAddr("voter");
-        uint256 amount = 1e18;
-        uint128 outcome = 1;
+        uint48 outcome = 1;
 
         // make sure market is open
         vm.warp(3);
@@ -97,8 +119,11 @@ contract FixedPriceMarketTest is Test {
         vm.stopPrank();
     }
 
-    function test_voteOnOutcome_takeFunds() public {
+    function test_voteOnOutcome_takeFunds(uint232 amount) public {
         vm.selectFork(polygonFork);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
@@ -107,8 +132,7 @@ contract FixedPriceMarketTest is Test {
 
         address recipient = makeAddr("recipient");
         address voter = makeAddr("voter");
-        uint256 amount = 1e18;
-        uint128 outcome = 1;
+        uint48 outcome = 1;
 
         // test that a clean slate is given
         assertEq(DAI.balanceOf(address(marketCloned)), 0);
@@ -119,6 +143,8 @@ contract FixedPriceMarketTest is Test {
         vm.warp(3);
 
         deal(address(DAI), voter, amount);
+        assertEq(DAI.balanceOf(voter), amount);
+
         vm.startPrank(voter);
         DAI.approve(address(marketCloned), amount);
         marketCloned.voteOnOutcome(outcome, amount, recipient);
@@ -129,8 +155,11 @@ contract FixedPriceMarketTest is Test {
         assertEq(DAI.balanceOf(recipient), 0);
     }
 
-    function test_voteOnOutcome_mintShares() public {
+    function test_voteOnOutcome_mintShares(uint232 amount) public {
         vm.selectFork(polygonFork);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
@@ -139,8 +168,7 @@ contract FixedPriceMarketTest is Test {
 
         address recipient = makeAddr("recipient");
         address voter = makeAddr("voter");
-        uint256 amount = 1e18;
-        uint128 outcome = 1;
+        uint48 outcome = 1;
 
         // test that a clean slate is given
         assertEq(marketCloned.balanceOf(recipient, outcome), 0);
@@ -157,19 +185,22 @@ contract FixedPriceMarketTest is Test {
         assertEq(marketCloned.balanceOf(recipient, outcome), amount);
     }
 
-    function test_voteOnOutcome_deductFee() public {
+    function test_voteOnOutcome_deductFee(uint232 amount, uint32 feePPM) public {
         vm.selectFork(polygonFork);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(feePPM > 0 && feePPM < marketCloned.RATIO_BASE() + 1);
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
-        _settings.feePPM = 3e4; // 3% fee
+        _settings.feePPM = feePPM;
         marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
 
         address recipient = makeAddr("recipient");
         address voter = makeAddr("voter");
-        uint256 amount = 1e18;
-        uint128 outcome = 1;
-        uint256 feeAmount = 3e16;
+        uint48 outcome = 1;
+        uint256 feeAmount = marketCloned.calculateFeeAmount(amount);
 
         // test that a clean slate is given
         assertEq(marketCloned.balanceOf(recipient, outcome), 0);
@@ -186,5 +217,248 @@ contract FixedPriceMarketTest is Test {
         assertEq(marketCloned.tvl(), amount - feeAmount);
         assertEq(marketCloned.collectedFees(), feeAmount);
         assertEq(DAI.balanceOf(address(marketCloned)), amount); // The market should store the fees
+    }
+
+    function test_permitVoteOnOutcome_invalidToken() public {
+        ISignatureTransfer.PermitTransferFrom memory _permit = permit;
+        _permit.permitted.token = address(0);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                FixedPriceMarket.InvalidToken.selector, _permit.permitted.token, address(marketCloned.DAI())
+            )
+        );
+        marketCloned.permitVoteOnOutcome(_permit, new bytes(0), 1, makeAddr("recipient"));
+    }
+
+    function test_permitVoteOnOutcome_emitEvent(uint192 amount, uint48 outcome) public {
+        vm.selectFork(polygonFork);
+
+        // initialize the market
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        outcome = uint48(bound(outcome, 1, marketCloned.possibleOutcomeCount()));
+
+        // prepare wallets
+        address recipient = makeAddr("recipient");
+        Vm.Wallet memory voter = vm.createWallet("voter");
+        deal(address(DAI), voter.addr, amount);
+
+        // prepare permit values
+        ISignatureTransfer.PermitTransferFrom memory _permit = permit;
+        _permit.permitted.amount = amount;
+
+        // make sure market is open
+        vm.warp(3);
+
+        vm.startPrank(voter.addr);
+        DAI.approve(address(PERMIT2), type(uint256).max);
+
+        vm.expectEmit(address(marketCloned));
+        emit Voted({voter: voter.addr, recipient: recipient, outcome: outcome, amountOfShares: amount});
+        marketCloned.permitVoteOnOutcome(_permit, get_permit_signature(voter, _permit), outcome, recipient);
+        vm.stopPrank();
+    }
+
+    function test_permitVoteOnOutcome_takeFunds(uint232 amount) public {
+        vm.selectFork(polygonFork);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+
+        // initialize the market
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        uint48 outcome = 1;
+
+        // prepare wallets
+        address recipient = makeAddr("recipient");
+        Vm.Wallet memory voter = vm.createWallet("voter");
+
+        // prepare permit values
+        ISignatureTransfer.PermitTransferFrom memory _permit = permit;
+        _permit.permitted.amount = amount;
+
+        // test that a clean slate is given
+        assertEq(DAI.balanceOf(address(marketCloned)), 0);
+        assertEq(DAI.balanceOf(voter.addr), 0);
+        assertEq(DAI.balanceOf(recipient), 0);
+
+        // make sure market is open
+        vm.warp(3);
+
+        deal(address(DAI), voter.addr, amount);
+        assertEq(DAI.balanceOf(voter.addr), amount);
+
+        vm.startPrank(voter.addr);
+        DAI.approve(address(PERMIT2), type(uint256).max);
+        marketCloned.permitVoteOnOutcome(_permit, get_permit_signature(voter, _permit), outcome, recipient);
+        vm.stopPrank();
+
+        assertEq(DAI.balanceOf(address(marketCloned)), amount);
+        assertEq(DAI.balanceOf(voter.addr), 0);
+        assertEq(DAI.balanceOf(recipient), 0);
+    }
+
+    function test_permitVoteOnOutcome_mintShares(uint232 amount) public {
+        vm.selectFork(polygonFork);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+
+        // initialize the market
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        uint48 outcome = 1;
+
+        // prepare wallets
+        address recipient = makeAddr("recipient");
+        Vm.Wallet memory voter = vm.createWallet("voter");
+
+        // prepare permit values
+        ISignatureTransfer.PermitTransferFrom memory _permit = permit;
+        _permit.permitted.amount = amount;
+
+        // test that a clean slate is given
+        assertEq(marketCloned.balanceOf(recipient, outcome), 0);
+
+        // make sure market is open
+        vm.warp(3);
+
+        deal(address(DAI), voter.addr, amount);
+        vm.startPrank(voter.addr);
+        DAI.approve(address(PERMIT2), type(uint256).max);
+        marketCloned.permitVoteOnOutcome(_permit, get_permit_signature(voter, _permit), outcome, recipient);
+        vm.stopPrank();
+
+        assertEq(marketCloned.balanceOf(recipient, outcome), amount);
+    }
+
+    function test_permitVoteOnOutcome_deductFee(uint232 amount, uint32 feePPM) public {
+        vm.selectFork(polygonFork);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(feePPM > 0 && feePPM < marketCloned.RATIO_BASE() + 1);
+
+        // initialize the market
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = feePPM;
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+
+        // prepare wallets
+        address recipient = makeAddr("recipient");
+        Vm.Wallet memory voter = vm.createWallet("voter");
+        uint48 outcome = 1;
+        uint256 feeAmount = marketCloned.calculateFeeAmount(amount);
+
+        // prepare permit values
+        ISignatureTransfer.PermitTransferFrom memory _permit = permit;
+        _permit.permitted.amount = amount;
+
+        // test that a clean slate is given
+        assertEq(marketCloned.balanceOf(recipient, outcome), 0);
+
+        // make sure market is open
+        vm.warp(3);
+
+        deal(address(DAI), voter.addr, amount);
+        vm.startPrank(voter.addr);
+        DAI.approve(address(PERMIT2), type(uint256).max);
+        marketCloned.permitVoteOnOutcome(_permit, get_permit_signature(voter, _permit), outcome, recipient);
+        vm.stopPrank();
+
+        assertEq(marketCloned.tvl(), amount - feeAmount);
+        assertEq(marketCloned.collectedFees(), feeAmount);
+        assertEq(DAI.balanceOf(address(marketCloned)), amount); // The market should store the fees
+    }
+
+    function test_redeem_notResolved(uint232 amount, uint48 outcome) public {
+        vm.selectFork(polygonFork);
+
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", settings);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        outcome = uint48(bound(outcome, 1, marketCloned.possibleOutcomeCount()));
+
+        // make sure market is open
+        vm.warp(3);
+
+        address voter = makeAddr("voter");
+        vote_on_outcome(outcome, amount, voter);
+
+        uint256 balanceOfVote = marketCloned.balanceOf(voter, outcome);
+        vm.expectRevert(IMarketBase.MarketNotResolved.selector);
+        marketCloned.redeem(balanceOfVote, voter);
+    }
+
+    function test_redeem_NotEnoughShares() public {
+        vm.selectFork(polygonFork);
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", settings);
+
+        uint232 amount = 1 ether;
+        uint48 outcome = 2;
+
+        // make sure market is resolved
+        vm.warp(8);
+        marketCloned.exposed__resolve(outcome);
+
+        address voter = makeAddr("voter");
+        vm.expectRevert(abi.encodeWithSelector(FixedPriceMarket.NotEnoughShares.selector, amount, 0));
+
+        marketCloned.redeem(amount, voter);
+    }
+
+    function fake_market_activity(uint256 votes, bytes32 seed) private {
+        // start at 1 to be able to use i as a source for the address of the recipient
+        for (uint256 i = 1; i < votes + 1;) {
+            uint48 outcome = uint48(i % marketCloned.possibleOutcomeCount());
+            uint232 amount = uint232(uint256(keccak256(abi.encode(i, seed))) % marketCloned.SHARES_MODIFIER());
+            address voter = vm.addr(i);
+            vote_on_outcome(outcome, amount, voter);
+            unchecked {
+                ++votes;
+            }
+        }
+    }
+
+    function vote_on_outcome(uint48 outcome, uint232 amount, address recipient) private {
+        deal(address(DAI), recipient, amount);
+        vm.startPrank(recipient);
+        DAI.approve(address(marketCloned), amount);
+        marketCloned.voteOnOutcome(outcome, amount, recipient);
+        vm.stopPrank();
+    }
+
+    function get_permit_signature(Vm.Wallet memory _wallet, ISignatureTransfer.PermitTransferFrom memory _permit)
+        private
+        returns (bytes memory)
+    {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            _wallet,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    keccak256(abi.encode(_TYPE_HASH, _HASHED_NAME, block.chainid, address(PERMIT2))),
+                    keccak256(
+                        abi.encode(
+                            PermitHash._PERMIT_TRANSFER_FROM_TYPEHASH,
+                            keccak256(abi.encode(PermitHash._TOKEN_PERMISSIONS_TYPEHASH, _permit.permitted)),
+                            address(marketCloned),
+                            _permit.nonce,
+                            _permit.deadline
+                        )
+                    )
+                )
+            )
+        );
+
+        return abi.encodePacked(r, s, v);
     }
 }

@@ -46,23 +46,21 @@ contract MarketBaseTest is Test {
 
     /// @notice Checks if the fee is calculated correctly. If the `_feePPM` is set to 0
     ///         the contract should return 0 too.
-    function testFuzz_calculateFeeAmount_correct(uint256 _amount, uint32 _feePPM) public {
+    function testFuzz_calculateFeeAmount_correct(uint232 _amount, uint32 _feePPM) public {
         // feePPM cannot be bigger than RATIO_BASE set in the market
         vm.assume(_feePPM < marketCloned.RATIO_BASE() + 1);
 
-        // _amount should be bigger than 0 and lower than the max uint256 divided by the RATIO_BASE because the RATIO_BASE
-        // gets added during the fee calculation
+        // _amount should be bigger than 0
         vm.assume(_amount > 0);
-        vm.assume(_amount < type(uint256).max / marketCloned.RATIO_BASE());
 
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = _feePPM;
         marketCloned.exposed___MarketBase_init(_settings);
 
-        uint128 feeFromContract = marketCloned.calculateFeeAmount(_amount);
+        uint256 feeFromContract = marketCloned.calculateFeeAmount(_amount);
 
         if (_feePPM > 0) {
-            uint128 expectedFeeAmount = uint128(_amount * _feePPM / marketCloned.RATIO_BASE());
+            uint256 expectedFeeAmount = uint256(_amount) * _feePPM / marketCloned.RATIO_BASE();
             assertEq(feeFromContract, expectedFeeAmount, "fee is correclty calculated");
         } else {
             assertEq(feeFromContract, 0, "fee to be zero because fee is set to 0");
@@ -189,10 +187,10 @@ contract MarketBaseTest is Test {
     function test_Revert_resolve_invalidOutcome() public {
         marketCloned.exposed___MarketBase_init(settings);
 
-        uint128 invalidOutcome = type(uint128).max - 1;
+        uint48 invalidOutcome = type(uint48).max - 1;
         vm.expectRevert(
             abi.encodeWithSelector(
-                IMarketBase.NotValidOutcome.selector, invalidOutcome, marketCloned.possibleOutcomeCount()
+                IMarketBase.InvalidOutcome.selector, invalidOutcome, marketCloned.possibleOutcomeCount()
             )
         );
         marketCloned.exposed_resolve(invalidOutcome);
@@ -201,7 +199,7 @@ contract MarketBaseTest is Test {
     /// @notice should revert if market is not closed
     function test_Revert_resolve_notClosed() public {
         marketCloned.exposed___MarketBase_init(settings);
-        uint128 validOutcome = 1;
+        uint48 validOutcome = 1;
         vm.warp(3);
 
         vm.expectRevert(abi.encodeWithSelector(IMarketBase.MarketNotClosed.selector, marketCloned.endDate(), 3));
@@ -211,7 +209,7 @@ contract MarketBaseTest is Test {
     /// @notice should set the outcome and emit MarketResolved
     function test_resolve_valid() public {
         marketCloned.exposed___MarketBase_init(settings);
-        uint128 validOutcome = 1;
+        uint48 validOutcome = 1;
         vm.warp(6);
 
         vm.expectEmit(address(marketCloned));

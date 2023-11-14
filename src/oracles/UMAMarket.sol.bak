@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity ^0.8.21;
 
-import {AMMMarket} from "src/pricing/AMMMarket.sol";
+import {DynamicBuyMarket} from "src/pricing/DynamicBuyMarket.sol";
 import {IMarketBase} from "src/interfaces/IMarketBase.sol";
 import {OptimisticOracleV3CallbackRecipientInterface} from
     "src/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
+import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract UMAMarket is AMMMarket, OptimisticOracleV3CallbackRecipientInterface {
+contract UMAMarket is DynamicBuyMarket, OptimisticOracleV3CallbackRecipientInterface {
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 public constant UMAMARKET_INTERFACE_ID = this.initialize.selector ^ this.disputeMarket.selector
         ^ this.assertionResolvedCallback.selector ^ this.assertionDisputedCallback.selector ^ this.voteOnOutcome.selector
@@ -37,21 +39,21 @@ contract UMAMarket is AMMMarket, OptimisticOracleV3CallbackRecipientInterface {
         _;
     }
 
-    constructor(address _oracle, uint64 _disputeWindow) {
+    constructor(address _oracle, uint64 _disputeWindow, IAllowanceTransfer _permit2) DynamicBuyMarket(_permit2) {
         ORACLE = _oracle;
         DISPUTE_WINDOW = _disputeWindow;
     }
 
     /// @notice Initialize function to initialize the contract and its dependencies
     /// @param _startPrice The initial price shares start trading
-    /// @param _acceptedTokens Tokens that are accepted by the market as payment
+    /// @param _acceptedToken Tokens that are accepted by the market as payment
     /// @param _settings Settings used to initialize the market
 
-    function initialize(uint96 _startPrice, address[] memory _acceptedTokens, MarketSettings calldata _settings)
+    function initialize(uint96 _startPrice, IERC20 _acceptedToken, MarketSettings calldata _settings)
         external
         initializer
     {
-        __AMMMarket_init(_startPrice, _acceptedTokens, _settings);
+        __DynamicBuyMarket_init(_startPrice, _acceptedToken, _settings);
     }
 
     /// @notice Function to dispute the market if you don't agree with the outcome. By default the market assumes that the most popular outcome it the truth
@@ -81,7 +83,7 @@ contract UMAMarket is AMMMarket, OptimisticOracleV3CallbackRecipientInterface {
     /// @notice Checks if this or the parent contract supports an interface by its ID.
     /// @param _interfaceId The ID of the interface.
     /// @return Returns `true` if the interface is supported.
-    function supportsInterface(bytes4 _interfaceId) public view virtual override(AMMMarket) returns (bool) {
+    function supportsInterface(bytes4 _interfaceId) public view virtual override(DynamicBuyMarket) returns (bool) {
         return UMAMARKET_INTERFACE_ID == _interfaceId || super.supportsInterface(_interfaceId);
     }
 }

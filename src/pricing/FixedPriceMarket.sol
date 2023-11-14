@@ -5,7 +5,7 @@ import {MarketBase} from "src/bases/MarketBase.sol";
 import {IMarketBase} from "src/interfaces/IMarketBase.sol";
 import {ERC1155, ERC1155Supply} from "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import {IERC20, SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
+import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
 
 abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     using SafeERC20 for IERC20;
@@ -18,21 +18,21 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     uint64 public constant SHARES_MODIFIER = 1e18;
 
     IERC20 public immutable DAI;
-    IAllowanceTransfer public immutable PERMIT2;
+    ISignatureTransfer public immutable PERMIT2;
     uint256 public price;
     uint256 public payoutPerShare;
 
     error NotEnoughShares(uint256 _requested, uint256 _actual);
-    error InvalidSpender(address _given, address _required);
-    error InvalidPrice(uint96 price);
+    error InvalidToken(address _given, address _expected);
+    error InvalidPrice(uint96 _price);
+    error AmountTooBig();
 
     event FixedPriceMarketInitialized(uint256 price, string metadataURI);
     event SharesRedeemed(
         address indexed holder, address indexed recipient, uint256 amountOfShares, uint256 payoutAmount
     );
-    event Voted(address indexed voter, address indexed recipient, uint256 outcome, uint256 amountOfShares);
 
-    constructor(IERC20 _dai, IAllowanceTransfer _permit2) ERC1155("") {
+    constructor(IERC20 _dai, ISignatureTransfer _permit2) ERC1155("") {
         DAI = _dai;
         PERMIT2 = _permit2;
     }
@@ -48,7 +48,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     ) internal onlyInitializing {
         // price cannot be 0
         if (_price < 1) {
-            revert InvalidPrice({price: _price});
+            revert InvalidPrice({_price: _price});
         }
 
         __MarketBase_init(_settings);
@@ -58,30 +58,43 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     }
 
     /// @inheritdoc IMarketBase
-    function voteOnOutcome(uint128 _outcome, uint256 _amount, address _recipient) external override returns (uint256) {
+    function voteOnOutcome(uint48 _outcome, uint232 _amount, address _recipient) external override returns (uint256) {
+        // biggest possible amount
+        if (_amount > type(uint232).max / SHARES_MODIFIER) {
+            revert AmountTooBig();
+        }
+
         DAI.safeTransferFrom(msg.sender, address(this), _amount);
         return _vote(_outcome, _amount, _recipient);
     }
 
     /// @notice Votes with the amount given for the outcome defined. Tokens gets send to the recipient
     /// @dev Follows the Permit2 flow. For the classic allow/transfer flow use `voteOnOutcome()`
-    /// @param _permitSingle Struct to define the settings forwareded to the permit2 contract
+    /// @param _permit Struct to define the settings forwareded to the permit2 contract
     /// @param _signature Signature forwarded to permit2
     /// @param _outcome Which outcome the user votes for
     /// @param _recipient Recipient of the shares. Has to be an ERC1155Receiver if it is a contract
     /// @return Amount of shares minted for the given outcome
     function permitVoteOnOutcome(
-        IAllowanceTransfer.PermitSingle calldata _permitSingle,
+        ISignatureTransfer.PermitTransferFrom calldata _permit,
         bytes calldata _signature,
-        uint128 _outcome,
+        uint48 _outcome,
         address _recipient
     ) external returns (uint256) {
-        if (_permitSingle.spender != address(this)) {
-            revert InvalidSpender(_permitSingle.spender, address(this));
+        // biggest possible amount
+        if (_permit.permitted.amount > type(uint232).max / SHARES_MODIFIER) {
+            revert AmountTooBig();
         }
-        PERMIT2.permit(msg.sender, _permitSingle, _signature);
-        PERMIT2.transferFrom(msg.sender, address(this), _permitSingle.details.amount, _permitSingle.details.token);
-        return _vote(_outcome, _permitSingle.details.amount, _recipient);
+        if (_permit.permitted.token != address(DAI)) {
+            revert InvalidToken(_permit.permitted.token, address(DAI));
+        }
+        PERMIT2.permitTransferFrom(
+            _permit,
+            ISignatureTransfer.SignatureTransferDetails({to: address(this), requestedAmount: _permit.permitted.amount}),
+            msg.sender,
+            _signature
+        );
+        return _vote(_outcome, uint200(_permit.permitted.amount), _recipient);
     }
 
     /// @notice Reedm shares for tokens if the defined amount is hold for the winning outcome
@@ -89,7 +102,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     /// @param _recipient Which address should receive the payout
     /// @return payout The amount of tokens that got paied out
     function redeem(uint256 _amount, address _recipient) public onlyResolvedMarket returns (uint256 payout) {
-        uint128 _outcome = outcome;
+        uint48 _outcome = outcome;
         uint256 userBalance = balanceOf(msg.sender, _outcome);
         if (userBalance < _amount) {
             revert NotEnoughShares(_amount, userBalance);
@@ -103,7 +116,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     /// @notice Burn shares if wanted. Redeems if the defined outcome is the winning outcome
     /// @param _outcome Outcome from which the shares should be burned
     /// @param _amount Amount of shares to burn
-    function burn(uint128 _outcome, uint256 _amount) external {
+    function burn(uint48 _outcome, uint256 _amount) external {
         if (_outcome == outcome) {
             redeem(_amount, msg.sender);
             return;
@@ -123,28 +136,31 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     /// @param _outcome Outcome to vote for
     /// @param _amount Amount of tokens to vote with
     /// @param _recipient Recipient of the shares. Has to be an ERC1155Receiver if it is a contract
-    /// @return amountOfShares Amount of shares minted
-    function _vote(uint128 _outcome, uint256 _amount, address _recipient)
+    /// @return shares Amount of shares minted
+    function _vote(uint48 _outcome, uint232 _amount, address _recipient)
         internal
         onlyValidOutcome(_outcome)
         onlyOpenMarket
-        returns (uint256 amountOfShares)
+        returns (uint256 shares)
     {
-        uint128 fees = calculateFeeAmount(_amount);
-        amountOfShares = (_amount - fees) * SHARES_MODIFIER / price;
+        uint256 fees = calculateFeeAmount(_amount);
+        shares = uint256(_amount - fees) * price / SHARES_MODIFIER;
         tvl += _amount - fees;
         // only store fees if necessary
         if (fees > 0) {
             collectedFees += fees;
         }
-        _mint(_recipient, _outcome, amountOfShares, "Savant");
-        emit Voted({voter: msg.sender, recipient: _recipient, outcome: _outcome, amountOfShares: amountOfShares});
+        _mint(_recipient, _outcome, shares, "Savant");
+        emit Voted({voter: msg.sender, recipient: _recipient, outcome: _outcome, shares: shares});
     }
 
     /// @notice Stores the payout per share and forwards the call in the inheritance chain
     /// @param _winningOutcome The outcome that has won
-    function _resolve(uint128 _winningOutcome) internal virtual override {
-        payoutPerShare = tvl / totalSupply(_winningOutcome);
+    function _resolve(uint48 _winningOutcome) internal virtual override {
+        uint256 totalSupplyOfOutcome = totalSupply(_winningOutcome);
+        if (totalSupplyOfOutcome > 0) {
+            payoutPerShare = tvl / totalSupplyOfOutcome;
+        }
         super._resolve(_winningOutcome);
     }
 }

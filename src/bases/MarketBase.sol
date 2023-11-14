@@ -6,17 +6,17 @@ import {ERC165} from "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import {IMarketBase} from "src/interfaces/IMarketBase.sol";
 
 abstract contract MarketBase is Initializable, ERC165, IMarketBase {
-    uint256 public constant RATIO_BASE = 1e6;
+    uint24 public constant RATIO_BASE = 1e5;
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
 
     address public creator;
     uint256 public tvl;
-    uint128 public collectedFees;
+    uint256 public collectedFees;
     uint32 public feePPM;
     uint64 public startDate;
     uint64 public endDate;
-    uint128 public possibleOutcomeCount;
-    uint128 public outcome;
+    uint48 public possibleOutcomeCount;
+    uint48 public outcome;
     string public metadata;
     address public feeRecipient;
 
@@ -48,7 +48,7 @@ abstract contract MarketBase is Initializable, ERC165, IMarketBase {
     modifier onlyValidOutcome(uint128 _outcome) {
         uint128 _possibleOutcomeCount = possibleOutcomeCount;
         if (_outcome == 0 || _outcome > possibleOutcomeCount) {
-            revert NotValidOutcome({givenOutcome: _outcome, possibleOutcomeCount: _possibleOutcomeCount});
+            revert InvalidOutcome({givenOutcome: _outcome, possibleOutcomeCount: _possibleOutcomeCount});
         }
         _;
     }
@@ -74,10 +74,10 @@ abstract contract MarketBase is Initializable, ERC165, IMarketBase {
     }
 
     /// @inheritdoc IMarketBase
-    function calculateFeeAmount(uint256 _amount) public view virtual returns (uint128) {
+    function calculateFeeAmount(uint232 _amount) public view virtual returns (uint256) {
         // If no fee is set the amount is always 0
         if (feePPM == 0) return 0;
-        return uint128(_amount * feePPM / RATIO_BASE);
+        return uint256(_amount) * feePPM / RATIO_BASE;
     }
 
     /// @inheritdoc IMarketBase
@@ -110,7 +110,7 @@ abstract contract MarketBase is Initializable, ERC165, IMarketBase {
 
     /// @notice Resolve the market to the given outcome
     /// @param _winningOutcome Outcome that the market gets resolved to
-    function _resolve(uint128 _winningOutcome) internal virtual onlyValidOutcome(_winningOutcome) onlyClosedMarket {
+    function _resolve(uint48 _winningOutcome) internal virtual onlyValidOutcome(_winningOutcome) onlyClosedMarket {
         outcome = _winningOutcome;
         emit MarketResolved({outcome: _winningOutcome});
     }

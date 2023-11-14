@@ -15,3 +15,6 @@ docs/
 
 # Gas snapshot (forge snapshot)
 .gas-snapshot
+
+# Testing
+coverage/

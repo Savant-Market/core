@@ -8,13 +8,13 @@ contract MarketBaseHarness is MarketBase {
         __MarketBase_init(_settings);
     }
 
-    function workaround_setOutcome(uint128 _outcome) external {
+    function workaround_setOutcome(uint48 _outcome) external {
         outcome = _outcome;
     }
 
-    function exposed_resolve(uint128 _outcome) external {
+    function exposed_resolve(uint48 _outcome) external {
         _resolve(_outcome);
     }
 
-    function voteOnOutcome(uint128, uint256, address) external returns (uint256) {}
+    function voteOnOutcome(uint48, uint232, address) external returns (uint256) {}
 }
