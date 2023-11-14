@@ -32,6 +32,9 @@ contract FixedPriceMarketTest is Test {
     event FixedPriceMarketInitialized(uint256 price, string metadataURI);
     event MarketBaseInitialized(IMarketBase.MarketSettings settings);
     event Voted(address indexed voter, address indexed recipient, uint256 outcome, uint256 amountOfShares);
+    event SharesRedeemed(
+        address indexed holder, address indexed recipient, uint256 amountOfShares, uint256 payoutAmount
+    );
 
     function setUp() public {
         polygonFork = vm.createFork("polygon", 48789677);
@@ -415,6 +418,96 @@ contract FixedPriceMarketTest is Test {
         marketCloned.redeem(amount, voter);
     }
 
+    function test_redeem_burnShares(uint224 amount) public {
+        vm.selectFork(polygonFork);
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+
+        uint48 outcome = 2;
+        address voter = makeAddr("voter");
+
+        // buy vote on outcome
+        vm.warp(3);
+        uint256 shares = vote_on_outcome(outcome, amount, voter);
+        uint256 totalSupplyOutcome = marketCloned.totalSupply(outcome);
+        assertEq(shares, amount);
+        assertEq(marketCloned.balanceOf(voter, outcome), shares);
+
+        // make sure market is resolved
+        vm.warp(8);
+        marketCloned.exposed__resolve(outcome);
+
+        vm.startPrank(voter);
+        marketCloned.redeem(amount, voter);
+        assertEq(marketCloned.balanceOf(voter, outcome), 0);
+        assertEq(marketCloned.totalSupply(outcome), totalSupplyOutcome - amount);
+        vm.stopPrank();
+    }
+
+    function test_redeem_transfersPayout(uint224 amount) public {
+        vm.selectFork(polygonFork);
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+
+        uint48 outcome = 2;
+        address voter = makeAddr("voter");
+
+        // buy vote on outcome
+        vm.warp(3);
+        uint256 shares = vote_on_outcome(outcome, amount, voter);
+        assertEq(shares, amount);
+        assertEq(marketCloned.balanceOf(voter, outcome), shares);
+
+        // make sure market is resolved
+        vm.warp(8);
+        marketCloned.exposed__resolve(outcome);
+
+        uint256 voterBalanceBefore = DAI.balanceOf(voter);
+        uint256 marketBalanceBefore = DAI.balanceOf(address(marketCloned));
+        vm.startPrank(voter);
+        marketCloned.redeem(amount, voter);
+        assertEq(DAI.balanceOf(voter), voterBalanceBefore + amount);
+        assertEq(DAI.balanceOf(address(marketCloned)), marketBalanceBefore - amount);
+        vm.stopPrank();
+    }
+
+    function test_redeem_emitSharesRedeemed(uint224 amount) public {
+        vm.selectFork(polygonFork);
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+
+        uint48 outcome = 2;
+        address voter = makeAddr("voter");
+
+        // buy vote on outcome
+        vm.warp(3);
+        uint256 shares = vote_on_outcome(outcome, amount, voter);
+        assertEq(shares, amount);
+        assertEq(marketCloned.balanceOf(voter, outcome), shares);
+
+        // make sure market is resolved
+        vm.warp(8);
+        marketCloned.exposed__resolve(outcome);
+
+        vm.startPrank(voter);
+        vm.expectEmit(address(marketCloned));
+        emit SharesRedeemed(voter, voter, amount, amount);
+        marketCloned.redeem(amount, voter);
+        vm.stopPrank();
+    }
+
     function fake_market_activity(uint256 votes, bytes32 seed) private {
         // start at 1 to be able to use i as a source for the address of the recipient
         for (uint256 i = 1; i < votes + 1;) {
@@ -428,11 +521,11 @@ contract FixedPriceMarketTest is Test {
         }
     }
 
-    function vote_on_outcome(uint48 outcome, uint232 amount, address recipient) private {
+    function vote_on_outcome(uint48 outcome, uint232 amount, address recipient) private returns (uint256 shares) {
         deal(address(DAI), recipient, amount);
         vm.startPrank(recipient);
         DAI.approve(address(marketCloned), amount);
-        marketCloned.voteOnOutcome(outcome, amount, recipient);
+        shares = marketCloned.voteOnOutcome(outcome, amount, recipient);
         vm.stopPrank();
     }
 

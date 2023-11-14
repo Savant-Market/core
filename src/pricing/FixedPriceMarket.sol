@@ -102,14 +102,14 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     /// @param _recipient Which address should receive the payout
     /// @return payout The amount of tokens that got paied out
     function redeem(uint256 _amount, address _recipient) public onlyResolvedMarket returns (uint256 payout) {
-        uint48 _outcome = outcome;
-        uint256 userBalance = balanceOf(msg.sender, _outcome);
-        if (userBalance < _amount) {
+        uint48 winningOutcome = outcome;
+        uint256 userBalance = balanceOf(msg.sender, winningOutcome);
+        if (_amount > userBalance + 1) {
             revert NotEnoughShares(_amount, userBalance);
         }
         payout = payoutPerShare * _amount;
-        _burn(msg.sender, _outcome, _amount);
-        DAI.transfer(_recipient, payoutPerShare * _outcome);
+        _burn(msg.sender, winningOutcome, _amount);
+        DAI.transfer(_recipient, payout);
         emit SharesRedeemed({holder: msg.sender, recipient: _recipient, amountOfShares: _amount, payoutAmount: payout});
     }
 
