@@ -222,6 +222,13 @@ contract FixedPriceMarketTest is Test {
         assertEq(DAI.balanceOf(address(marketCloned)), amount); // The market should store the fees
     }
 
+    function test_voteOnOutcome_amountTooBigError() public {
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", settings);
+        uint232 amount = type(uint232).max / marketCloned.SHARES_MODIFIER() + 1;
+        vm.expectRevert(FixedPriceMarket.AmountTooBig.selector);
+        marketCloned.voteOnOutcome(1, amount, address(0));
+    }
+
     function test_permitVoteOnOutcome_invalidToken() public {
         ISignatureTransfer.PermitTransferFrom memory _permit = permit;
         _permit.permitted.token = address(0);
@@ -381,6 +388,19 @@ contract FixedPriceMarketTest is Test {
         assertEq(DAI.balanceOf(address(marketCloned)), amount); // The market should store the fees
     }
 
+    function test_permitVoteOnOutcome_amountTooBig() public {
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", settings);
+
+        // prepare permit values
+        ISignatureTransfer.PermitTransferFrom memory _permit = permit;
+        _permit.permitted.amount = type(uint232).max / marketCloned.SHARES_MODIFIER() + 1;
+
+        vm.expectRevert(FixedPriceMarket.AmountTooBig.selector);
+        marketCloned.permitVoteOnOutcome(
+            _permit, get_permit_signature(vm.createWallet("voter"), _permit), 1, address(0)
+        );
+    }
+
     function test_redeem_notResolved(uint232 amount, uint48 outcome) public {
         vm.selectFork(polygonFork);
 
@@ -508,19 +528,98 @@ contract FixedPriceMarketTest is Test {
         vm.stopPrank();
     }
 
-    function fake_market_activity(uint256 votes, bytes32 seed) private {
-        // start at 1 to be able to use i as a source for the address of the recipient
-        for (uint256 i = 1; i < votes + 1;) {
-            uint48 outcome = uint48(i % marketCloned.possibleOutcomeCount());
-            uint232 amount = uint232(uint256(keccak256(abi.encode(i, seed))) % marketCloned.SHARES_MODIFIER());
-            address voter = vm.addr(i);
-            vote_on_outcome(outcome, amount, voter);
-            unchecked {
-                ++votes;
-            }
-        }
+    function test_burn_shouldRedeem(uint232 amount) public {
+        vm.selectFork(polygonFork);
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+
+        uint48 outcome = 2;
+        address voter = makeAddr("voter");
+
+        // buy vote on outcome
+        vm.warp(3);
+        uint256 shares = vote_on_outcome(outcome, amount, voter);
+        assertEq(shares, amount);
+        assertEq(marketCloned.balanceOf(voter, outcome), shares);
+
+        // make sure market is resolved
+        vm.warp(8);
+        marketCloned.exposed__resolve(outcome);
+
+        vm.startPrank(voter);
+        vm.expectEmit(address(marketCloned));
+        emit SharesRedeemed(voter, voter, amount, amount);
+        marketCloned.burn(outcome, amount);
+        vm.stopPrank();
     }
 
+    function test_burn_shouldOnlyBurn(uint232 amount) public {
+        vm.selectFork(polygonFork);
+        IMarketBase.MarketSettings memory _settings = settings;
+        _settings.feePPM = 0;
+        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+
+        // verify fuzzing inputs
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+
+        uint48 outcome = 2;
+        address voter = makeAddr("voter");
+
+        // buy vote on outcome
+        vm.warp(3);
+        uint256 shares = vote_on_outcome(outcome, amount, voter);
+        assertEq(shares, amount);
+        assertEq(marketCloned.balanceOf(voter, outcome), shares);
+
+        // make sure market is resolved
+        vm.warp(8);
+        marketCloned.exposed__resolve(1);
+
+        vm.startPrank(voter);
+        marketCloned.burn(outcome, amount);
+        vm.stopPrank();
+
+        assertEq(marketCloned.balanceOf(voter, outcome), 0);
+        assertEq(DAI.balanceOf(voter), 0);
+    }
+
+    /// @notice check if market exports the correct interface
+    function test_supportsInterface_ERC165() public {
+        // should support the ERC165 interface
+        assertEq(marketCloned.supportsInterface(0x01ffc9a7), true, "should support ERC165 the interface");
+    }
+
+    /// @notice check if market exports the base interface
+    function test_supportsInterface_IMarketBase() public {
+        // should support the ERC165 interface of IMarketBase
+        assertEq(
+            marketCloned.supportsInterface(type(IMarketBase).interfaceId),
+            true,
+            "should support the IBaseMarket interface"
+        );
+    }
+
+    /// @notice check if market exports the correct interface
+    function test_supportsInterface_IFixedPriceMarket() public {
+        // should support the ERC165 interface of IMarketBase
+        assertEq(
+            marketCloned.supportsInterface(marketCloned.FIXED_PRICE_MARKET_INTERFACE_ID()),
+            true,
+            "should support the FixedPriceMarket interface"
+        );
+    }
+
+    /// @notice should return false
+    function test_supportsInterface_InvalidInterface() public {
+        // should not support an invalid interface
+        assertEq(marketCloned.supportsInterface(0xffffffff), false, "should not support the interface");
+    }
+
+    // HELPERS
     function vote_on_outcome(uint48 outcome, uint232 amount, address recipient) private returns (uint256 shares) {
         deal(address(DAI), recipient, amount);
         vm.startPrank(recipient);
