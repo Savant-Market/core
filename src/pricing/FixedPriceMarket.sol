@@ -12,7 +12,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
 
     /// @notice The [ERC-165](https://eips.ethereum.org/EIPS/eip-165) interface ID of the contract.
     bytes4 public constant FIXED_PRICE_MARKET_INTERFACE_ID =
-        this.voteOnOutcome.selector ^ this.permitVoteOnOutcome.selector ^ this.redeem.selector;
+        this.voteOnOutcome.selector ^ this.permitVoteOnOutcome.selector ^ this.redeem.selector ^ this.burn.selector;
 
     /// @dev inflate the amount of shares by 18 0s
     uint64 public constant SHARES_MODIFIER = 1e18;
