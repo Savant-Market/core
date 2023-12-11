@@ -7,7 +7,7 @@ interface IMarketBase {
     error MarketNotResolved();
     error InvalidOutcome(uint128 givenOutcome, uint128 possibleOutcomeCount);
 
-    event MarketResolved(uint128 outcome);
+    event MarketResolved(uint128 outcome, uint256 payoutPerShare);
     event MarketBaseInitialized(MarketSettings settings);
     event Voted(address indexed voter, address indexed recipient, uint256 outcome, uint256 shares);
     event Redeemed(address indexed recipient, uint256 amountOfShares, uint256 payout);
