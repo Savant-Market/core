@@ -13,7 +13,7 @@ contract MarketBaseTest is Test {
 
     IMarketBase.MarketSettings settings = IMarketBase.MarketSettings(1, "asdf", 2, 3, vm.addr(4), 5, vm.addr(6));
 
-    event MarketResolved(uint128 outcome);
+    event MarketResolved(uint128 outcome, uint256 payoutPerShare);
     event MarketBaseInitialized(IMarketBase.MarketSettings settings);
 
     function setUp() public {
@@ -193,7 +193,7 @@ contract MarketBaseTest is Test {
                 IMarketBase.InvalidOutcome.selector, invalidOutcome, marketCloned.possibleOutcomeCount()
             )
         );
-        marketCloned.exposed_resolve(invalidOutcome);
+        marketCloned.exposed_resolve(invalidOutcome, 1);
     }
 
     /// @notice should revert if market is not closed
@@ -203,7 +203,7 @@ contract MarketBaseTest is Test {
         vm.warp(3);
 
         vm.expectRevert(abi.encodeWithSelector(IMarketBase.MarketNotClosed.selector, marketCloned.endDate(), 3));
-        marketCloned.exposed_resolve(validOutcome);
+        marketCloned.exposed_resolve(validOutcome, 1);
     }
 
     /// @notice should set the outcome and emit MarketResolved
@@ -213,8 +213,8 @@ contract MarketBaseTest is Test {
         vm.warp(6);
 
         vm.expectEmit(address(marketCloned));
-        emit MarketResolved(validOutcome);
-        marketCloned.exposed_resolve(validOutcome);
+        emit MarketResolved(validOutcome, 1);
+        marketCloned.exposed_resolve(validOutcome, 1);
         assertEq(marketCloned.outcome(), validOutcome, "should set the outcome correctly");
     }
 }

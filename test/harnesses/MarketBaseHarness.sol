@@ -12,8 +12,8 @@ contract MarketBaseHarness is MarketBase {
         outcome = _outcome;
     }
 
-    function exposed_resolve(uint48 _outcome) external {
-        _resolve(_outcome);
+    function exposed_resolve(uint48 _outcome, uint256 _payoutPerShare) external {
+        _resolve(_outcome, _payoutPerShare);
     }
 
     function voteOnOutcome(uint48, uint232, address) external returns (uint256) {}

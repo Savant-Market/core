@@ -49,26 +49,23 @@ contract DynamicBuyMarketTest is Test {
 
     function test_immutables_clone() public {
         assertEq(
-            address(marketCloned.PERMIT2()),
-            address(PERMIT2),
-            "Cloned market should have the correct PERMIT2 address"
+            address(marketCloned.PERMIT2()), address(PERMIT2), "Cloned market should have the correct PERMIT2 address"
         );
     }
 
     function test_Revert___DynamicBuyMarket_init_initializingNonClone() public {
+        uint96 startPrice = 1 * market.RATIO_BASE();
         vm.expectRevert(Initializable.InvalidInitialization.selector);
-        market.exposed___DynamicBuyMarket_init(1 ether, "https://example.com", settings);
+        market.exposed___DynamicBuyMarket_init(startPrice, "https://example.com", settings);
     }
 
     function test___DynamicBuyMarket_init_initializingClone() public {
+        uint96 startPrice = 1  * market.RATIO_BASE();
         vm.expectEmit(address(marketCloned));
         emit MarketBaseInitialized({settings: settings});
-        emit DynamicBuyMarketInitialized({
-            startPrice: 1,
-            metadataURI: "https://example.com"
-        });
+        emit DynamicBuyMarketInitialized({startPrice: startPrice, metadataURI: "https://example.com"});
 
-        marketCloned.exposed___DynamicBuyMarket_init(1, "https://example.com", settings);
+        marketCloned.exposed___DynamicBuyMarket_init(startPrice, "https://example.com", settings);
 
         assertEq(marketCloned.feePPM(), 1, "fee is correclty set");
         assertEq(marketCloned.metadata(), "asdf", "metadata is correclty set");
@@ -80,19 +77,19 @@ contract DynamicBuyMarketTest is Test {
         assertEq(marketCloned.tvl(), 0, "tvl is correclty set");
         assertEq(marketCloned.collectedFees(), 0, "collectedFees is correclty set");
         assertEq(marketCloned.outcome(), 0, "outcome is correclty set");
-        assertEq(marketCloned.startPrice(), 1, "price is correclty set");
+        assertEq(marketCloned.startPrice(), startPrice, "price is correclty set");
         assertEq(marketCloned.uri(1), "https://example.com", "tokenURI is correclty set");
     }
 
     function test_calculatePrice_startPrice() public {
-        uint96 startPrice = 1 ether;
+        uint96 startPrice = 1 * market.RATIO_BASE();
         marketCloned.exposed___DynamicBuyMarket_init(startPrice, "https://example.com", settings);
         assertEq(marketCloned.calculatePrice(1), startPrice);
     }
 
     function test_calculatePrice_startPrice_secondOutcome() public {
         vm.selectFork(polygonFork);
-        uint96 startPrice = 1 ether;
+        uint96 startPrice = 1 * market.RATIO_BASE();
         marketCloned.exposed___DynamicBuyMarket_init(startPrice, "https://example.com", settings);
 
         vm.warp(3);
@@ -103,7 +100,7 @@ contract DynamicBuyMarketTest is Test {
 
     function test_calculatePrice_dynamicPricing() public {
         vm.selectFork(polygonFork);
-        uint96 startPrice = 1;
+        uint96 startPrice = 1 * market.RATIO_BASE();
         marketCloned.exposed___DynamicBuyMarket_init(startPrice, "https://example.com", settings);
 
         vm.warp(3);
@@ -119,7 +116,7 @@ contract DynamicBuyMarketTest is Test {
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
         _settings.possibleOutcomeCount = 2;
-        marketCloned.exposed___DynamicBuyMarket_init(1, "https://example.com", _settings);
+        marketCloned.exposed___DynamicBuyMarket_init(1 * market.RATIO_BASE(), "https://example.com", _settings);
 
         // verify fuzzing inputs
         vm.assume(amount > 5e17 && amount < type(uint232).max / marketCloned.RATIO_BASE());
