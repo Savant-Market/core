@@ -36,7 +36,7 @@ abstract contract DynamicBuyMarket is MarketBase, ERC1155Supply {
     }
 
     /// @notice Initialize function to initialize the storage of the minimal proxy contract
-    /// @param _startPrice The initial price shares start trading
+    /// @param _startPrice The initial price shares start trading multiplied by RATIO_BASE (e.g. 0.5 = )
     /// @param _erc1155MetadataURI Metadata URI for the ERC1155 based shares. The metadata has to included 18 for the decimals property
     /// @param _settings Settings used to initialize the market
     function __DynamicBuyMarket_init(
@@ -58,17 +58,14 @@ abstract contract DynamicBuyMarket is MarketBase, ERC1155Supply {
         emit Redeemed({recipient: _recipient, amountOfShares: _amount, payout: payout});
     }
 
-    function calculatePrice(uint128 _outcome) public view returns(uint256) {
-        return _calculatePrice(_outcome) / RATIO_BASE;
-    }
-
-    function _calculatePrice(uint128 _outcome) internal view onlyValidOutcome(_outcome) returns (uint256) {
+    function calculatePrice(uint128 _outcome) public view onlyValidOutcome(_outcome) returns (uint256) {
         uint256 totalOutcomeSupply = totalSupply(_outcome);
         if (totalOutcomeSupply == 0) {
-            return startPrice * RATIO_BASE;
+            return startPrice;
         }
 
-        return totalOutcomeSupply * startPrice * possibleOutcomeCount * RATIO_BASE / tvl;
+        // RATIO_BASE is already included in startPrice
+        return totalOutcomeSupply * startPrice * possibleOutcomeCount / tvl;
     }
 
     /// @inheritdoc IMarketBase
@@ -128,7 +125,7 @@ abstract contract DynamicBuyMarket is MarketBase, ERC1155Supply {
         }
         tvl += amountWithoutFees;
 
-        shares = amountWithoutFees * _calculatePrice(_outcome) / RATIO_BASE;
+        shares = amountWithoutFees * calculatePrice(_outcome) / RATIO_BASE;
         _mint(_recipient, _outcome, shares, "");
         emit Voted({voter: msg.sender, recipient: _recipient, outcome: _outcome, shares: shares});
     }
