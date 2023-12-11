@@ -110,8 +110,12 @@ abstract contract MarketBase is Initializable, ERC165, IMarketBase {
 
     /// @notice Resolve the market to the given outcome
     /// @param _winningOutcome Outcome that the market gets resolved to
-    function _resolve(uint48 _winningOutcome) internal virtual onlyValidOutcome(_winningOutcome) onlyClosedMarket {
+    /// @param _payoutPerShare How much a user receives for 1 share
+    function _resolve(uint48 _winningOutcome, uint256 _payoutPerShare) internal virtual onlyValidOutcome(_winningOutcome) onlyClosedMarket {
         outcome = _winningOutcome;
-        emit MarketResolved({outcome: _winningOutcome});
+        emit MarketResolved({
+            outcome: _winningOutcome,
+            payoutPerShare: _payoutPerShare
+        });
     }
 }
