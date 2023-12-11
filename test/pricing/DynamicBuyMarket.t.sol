@@ -103,7 +103,7 @@ contract DynamicBuyMarketTest is Test {
 
     function test_calculatePrice_dynamicPricing() public {
         vm.selectFork(polygonFork);
-        uint96 startPrice = 1 ether;
+        uint96 startPrice = 1;
         marketCloned.exposed___DynamicBuyMarket_init(startPrice, "https://example.com", settings);
 
         vm.warp(3);
@@ -119,10 +119,10 @@ contract DynamicBuyMarketTest is Test {
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
         _settings.possibleOutcomeCount = 2;
-        marketCloned.exposed___DynamicBuyMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___DynamicBuyMarket_init(1, "https://example.com", _settings);
 
         // verify fuzzing inputs
-        vm.assume(amount > 5e17 && amount < type(uint232).max / marketCloned.BPPM());
+        vm.assume(amount > 5e17 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         uint48 outcome = 2;
         address voter = makeAddr("voter");
@@ -130,6 +130,8 @@ contract DynamicBuyMarketTest is Test {
         // buy vote on outcome
         vm.warp(3);
         uint256 shares = vote_on_outcome(outcome, amount, voter);
+        emit log_named_uint("amount", amount);
+        emit log_named_uint("shares", shares);
 
         // make sure market is resolved
         vm.warp(8);
