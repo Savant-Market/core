@@ -14,10 +14,8 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     bytes4 public constant FIXED_PRICE_MARKET_INTERFACE_ID =
         this.voteOnOutcome.selector ^ this.permitVoteOnOutcome.selector ^ this.redeem.selector ^ this.burn.selector;
 
-    /// @dev inflate the amount of shares by 18 0s
-    uint64 public constant SHARES_MODIFIER = 1e18;
-
     IERC20 public immutable DAI;
+
     ISignatureTransfer public immutable PERMIT2;
     uint256 public price;
     uint256 public payoutPerShare;
@@ -38,7 +36,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     }
 
     /// @notice Initialize function to initialize the storage of the minimal proxy contract
-    /// @param _price The price for which a user receives 1 share
+    /// @param _price The price the user needs to pay per share multiplied with RATIO_BASE (e.g. 0.5 = 0.5 * RATIO_BASE)
     /// @param _erc1155MetadataURI Metadata URI for the ERC1155 based shares. The metadata has to included 18 for the decimals property
     /// @param _settings Settings used to initialize the market
     function __FixedPriceMarket_init(
@@ -60,7 +58,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
     /// @inheritdoc IMarketBase
     function voteOnOutcome(uint48 _outcome, uint232 _amount, address _recipient) external override returns (uint256) {
         // biggest possible amount
-        if (_amount > type(uint232).max / SHARES_MODIFIER) {
+        if (_amount > type(uint232).max / RATIO_BASE) {
             revert AmountTooBig();
         }
 
@@ -82,7 +80,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
         address _recipient
     ) external returns (uint256) {
         // biggest possible amount
-        if (_permit.permitted.amount > type(uint232).max / SHARES_MODIFIER) {
+        if (_permit.permitted.amount > type(uint232).max / RATIO_BASE) {
             revert AmountTooBig();
         }
         if (_permit.permitted.token != address(DAI)) {
@@ -94,7 +92,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
             msg.sender,
             _signature
         );
-        return _vote(_outcome, uint200(_permit.permitted.amount), _recipient);
+        return _vote(_outcome, uint232(_permit.permitted.amount), _recipient);
     }
 
     /// @notice Reedm shares for tokens if the defined amount is hold for the winning outcome
@@ -144,7 +142,7 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
         returns (uint256 shares)
     {
         uint256 fees = calculateFeeAmount(_amount);
-        shares = uint256(_amount - fees) * price / SHARES_MODIFIER;
+        shares = uint256(_amount - fees) * price / RATIO_BASE;
         tvl += _amount - fees;
         // only store fees if necessary
         if (fees > 0) {
@@ -156,11 +154,13 @@ abstract contract FixedPriceMarket is MarketBase, ERC1155Supply {
 
     /// @notice Stores the payout per share and forwards the call in the inheritance chain
     /// @param _winningOutcome The outcome that has won
-    function _resolve(uint48 _winningOutcome) internal virtual override {
+    function _resolve(uint48 _winningOutcome) internal virtual {
         uint256 totalSupplyOfOutcome = totalSupply(_winningOutcome);
+        uint256 _payoutPerShare = 0;
         if (totalSupplyOfOutcome > 0) {
-            payoutPerShare = tvl / totalSupplyOfOutcome;
+            _payoutPerShare = tvl / totalSupplyOfOutcome;
+            payoutPerShare = _payoutPerShare;
         }
-        super._resolve(_winningOutcome);
+        super._resolve(_winningOutcome, _payoutPerShare);
     }
 }

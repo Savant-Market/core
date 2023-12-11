@@ -98,12 +98,12 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         address recipient = makeAddr("recipient");
         address voter = makeAddr("voter");
@@ -126,12 +126,12 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         address recipient = makeAddr("recipient");
         address voter = makeAddr("voter");
@@ -162,12 +162,12 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         address recipient = makeAddr("recipient");
         address voter = makeAddr("voter");
@@ -192,13 +192,13 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
         vm.assume(feePPM > 0 && feePPM < marketCloned.RATIO_BASE() + 1);
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = feePPM;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         address recipient = makeAddr("recipient");
         address voter = makeAddr("voter");
@@ -223,8 +223,8 @@ contract FixedPriceMarketTest is Test {
     }
 
     function test_voteOnOutcome_amountTooBigError() public {
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", settings);
-        uint232 amount = type(uint232).max / marketCloned.SHARES_MODIFIER() + 1;
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", settings);
+        uint232 amount = type(uint232).max / marketCloned.RATIO_BASE() + 1;
         vm.expectRevert(FixedPriceMarket.AmountTooBig.selector);
         marketCloned.voteOnOutcome(1, amount, address(0));
     }
@@ -246,10 +246,10 @@ contract FixedPriceMarketTest is Test {
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
         outcome = uint48(bound(outcome, 1, marketCloned.possibleOutcomeCount()));
 
         // prepare wallets
@@ -277,12 +277,12 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
         uint48 outcome = 1;
 
         // prepare wallets
@@ -318,12 +318,12 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
         uint48 outcome = 1;
 
         // prepare wallets
@@ -353,13 +353,13 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
         vm.assume(feePPM > 0 && feePPM < marketCloned.RATIO_BASE() + 1);
 
         // initialize the market
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = feePPM;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         // prepare wallets
         address recipient = makeAddr("recipient");
@@ -389,11 +389,11 @@ contract FixedPriceMarketTest is Test {
     }
 
     function test_permitVoteOnOutcome_amountTooBig() public {
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", settings);
 
         // prepare permit values
         ISignatureTransfer.PermitTransferFrom memory _permit = permit;
-        _permit.permitted.amount = type(uint232).max / marketCloned.SHARES_MODIFIER() + 1;
+        _permit.permitted.amount = type(uint232).max / marketCloned.RATIO_BASE() + 1;
 
         vm.expectRevert(FixedPriceMarket.AmountTooBig.selector);
         marketCloned.permitVoteOnOutcome(
@@ -404,10 +404,10 @@ contract FixedPriceMarketTest is Test {
     function test_redeem_notResolved(uint232 amount, uint48 outcome) public {
         vm.selectFork(polygonFork);
 
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", settings);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
         outcome = uint48(bound(outcome, 1, marketCloned.possibleOutcomeCount()));
 
         // make sure market is open
@@ -423,7 +423,7 @@ contract FixedPriceMarketTest is Test {
 
     function test_redeem_NotEnoughShares() public {
         vm.selectFork(polygonFork);
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", settings);
 
         uint232 amount = 1 ether;
         uint48 outcome = 2;
@@ -442,10 +442,10 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         uint48 outcome = 2;
         address voter = makeAddr("voter");
@@ -472,10 +472,10 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         uint48 outcome = 2;
         address voter = makeAddr("voter");
@@ -503,10 +503,10 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         uint48 outcome = 2;
         address voter = makeAddr("voter");
@@ -532,10 +532,10 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         uint48 outcome = 2;
         address voter = makeAddr("voter");
@@ -561,10 +561,10 @@ contract FixedPriceMarketTest is Test {
         vm.selectFork(polygonFork);
         IMarketBase.MarketSettings memory _settings = settings;
         _settings.feePPM = 0;
-        marketCloned.exposed___FixedPriceMarket_init(1e18, "https://example.com", _settings);
+        marketCloned.exposed___FixedPriceMarket_init(1e5, "https://example.com", _settings);
 
         // verify fuzzing inputs
-        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.SHARES_MODIFIER());
+        vm.assume(amount > 0 && amount < type(uint232).max / marketCloned.RATIO_BASE());
 
         uint48 outcome = 2;
         address voter = makeAddr("voter");
